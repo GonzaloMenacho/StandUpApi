@@ -55,12 +55,14 @@ namespace API.Controllers
         }
 
         [HttpPut("edit/{id}")]
-        public async Task<Movie> Put(string id, string title, string rating, string description )
+        public async Task<Movie> Put(string id, string title, float userrating, string description, string criticrating, double totalratingcount, string totaluserreviews,
+            string totalcriticreviews, List<string> genres, string datepublished, int duration, string movietrailer)
         {
 
             var response = await _elasticClient.UpdateAsync<Movie>(id, u => u
                 .Index("movies")
-                .Doc(new Movie { Title = title, Rating = rating, Description = description}));
+                .Doc(new Movie { Title = title, UserRating = userrating, Description = description, CriticRating = criticrating, TotalRatingCount = totalratingcount, TotalUserReviews = totaluserreviews,
+                TotalCriticReviews = totalcriticreviews, Genres = genres, DatePublished = datepublished, Duration = duration, MovieTrailer = movietrailer}));
 
             return null;
         }
