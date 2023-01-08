@@ -9,6 +9,7 @@ namespace API
     public class Movie
     {
         // data type reflects json in ES
+        public int movieID { get; set; }
         public string Title { get; set; }
         public float UserRating { get; set; } // 0 - 10. also known as "movieIMDbRating" in dataset
         public string Description { get; set; }
