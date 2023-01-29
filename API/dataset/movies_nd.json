@@ -1,4 +1,21 @@
-{"id":1,"title":"Avengers Endgame","movieIMDbRating":8.4,"totalRatingCount":1073964,"totalUserReviews":"9.5K","totalCriticReviews":"593","metaScore":"78","movieGenres":["Action","Adventure","Drama"],"directors":["Anthony Russo","Joe Russo"],"datePublished":"2019-04-26","creators":["Christopher Markus","Stephen McFeely","Stan Lee"],"mainStars":["Robert Downey Jr.","Chris Evans","Mark Ruffalo"],"description":"After the devastating events of Avengers: Infinity War (2018), the universe is in ruins. With the help of remaining allies, the Avengers assemble once more in order to reverse Thanos' actions and restore balance to the universe.","duration":181,"movieTrailer":"https://youtu.be/TcMBFSGVi1c","moviePoster":"https://m.media-amazon.com/images/M/MV5BMTc5MDE2ODcwNV5BMl5BanBnXkFtZTgwMzI2NzQ2NzM@._V1_.jpg"}
+{
+  "id": 1,
+  "title": "Avengers Endgame",
+  "movieIMDbRating": 8.4,
+  "totalRatingCount": 1073964,
+  "totalUserReviews": "9.5K",
+  "totalCriticReviews": "593",
+  "metaScore": "78",
+  "movieGenres": [ "Action", "Adventure", "Drama" ],
+  "directors": [ "Anthony Russo", "Joe Russo" ],
+  "datePublished": "2019-04-26",
+  "creators": [ "Christopher Markus", "Stephen McFeely", "Stan Lee" ],
+  "mainStars": [ "Robert Downey Jr.", "Chris Evans", "Mark Ruffalo" ],
+  "description": "After the devastating events of Avengers: Infinity War (2018), the universe is in ruins. With the help of remaining allies, the Avengers assemble once more in order to reverse Thanos' actions and restore balance to the universe.",
+  "duration": 181,
+  "movieTrailer": "https://youtu.be/TcMBFSGVi1c",
+  "moviePoster": "https://m.media-amazon.com/images/M/MV5BMTc5MDE2ODcwNV5BMl5BanBnXkFtZTgwMzI2NzQ2NzM@._V1_.jpg"
+}
 {"id":2,"title":"Forrest Gump","movieIMDbRating":8.8,"totalRatingCount":2016919,"totalUserReviews":"2.9K","totalCriticReviews":"173","metaScore":"82","movieGenres":["Drama","Romance"],"directors":["Robert Zemeckis"],"datePublished":"1994-07-06","creators":["Winston Groom","Eric Roth"],"mainStars":["Tom Hanks","Robin Wright","Gary Sinise"],"description":"The presidencies of Kennedy and Johnson, the Vietnam War, the Watergate scandal and other historical events unfold from the perspective of an Alabama man with an IQ of 75, whose only desire is to be reunited with his childhood swe...","duration":142,"movieTrailer":"https://youtu.be/bLvqoHBptjg","moviePoster":"https://m.media-amazon.com/images/M/MV5BNWIwODRlZTUtY2U3ZS00Yzg1LWJhNzYtMmZiYmEyNmU1NjMzXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_FMjpg_UX1000_.jpg"}
 {"id":3,"title":"John Wick Chapter 3  Parabellum","movieIMDbRating":7.4,"totalRatingCount":330425,"totalUserReviews":"2.4K","totalCriticReviews":"399","metaScore":"73","movieGenres":["Action","Crime","Thriller"],"directors":["Chad Stahelski"],"datePublished":"2019-07-05","creators":["Derek Kolstad","Shay Hatten","Chris Collins"],"mainStars":["Keanu Reeves","Halle Berry","Ian McShane"],"description":"John Wick is on the run after killing a member of the international assassins' guild, and with a $14 million price tag on his head, he is the target of hit men and women everywhere.","duration":130,"movieTrailer":"https://youtu.be/M7XM597XO94","moviePoster":"https://m.media-amazon.com/images/M/MV5BYTE0MTE2ZDAtNDNlOC00OGQwLTkxOTUtNzhlMjA1MWJkZWEyXkEyXkFqcGdeQXVyOTkwMTc4ODQ@._V1_.jpg"}
 {"id":4,"title":"Joker","movieIMDbRating":8.4,"totalRatingCount":1213550,"totalUserReviews":"11.3K","totalCriticReviews":"697","metaScore":"59","movieGenres":["Crime","Drama","Thriller"],"directors":["Todd Phillips"],"datePublished":"2019-10-04","creators":["Todd Phillips","Scott Silver","Bob Kane"],"mainStars":["Joaquin Phoenix","Robert De Niro","Zazie Beetz"],"description":"A mentally troubled stand-up comedian embarks on a downward spiral that leads to the creation of an iconic villain.","duration":122,"movieTrailer":"https://youtu.be/t433PEQGErc","moviePoster":"https://m.media-amazon.com/images/M/MV5BNGVjNWI4ZGUtNzE0MS00YTJmLWE0ZDctN2ZiYTk2YmI3NTYyXkEyXkFqcGdeQXVyMTkxNjUyNQ@@._V1_FMjpg_UX1000_.jpg"}
