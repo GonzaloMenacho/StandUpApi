@@ -7,4 +7,21 @@
 {"id":7,"title":"SpiderMan No Way Home","movieIMDbRating":8.3,"totalRatingCount":675951,"totalUserReviews":"6K","totalCriticReviews":"396","metaScore":"71","movieGenres":["Action","Adventure","Fantasy"],"directors":["Jon Watts"],"datePublished":"2021-12-17","creators":["Chris McKenna","Erik Sommers","Stan Lee"],"mainStars":["Tom Holland","Zendaya","Benedict Cumberbatch"],"description":"With Spider-Man's identity now revealed, Peter asks Doctor Strange for help. When a spell goes wrong, dangerous foes from other worlds start to appear, forcing Peter to discover what it truly means to be Spider-Man.","duration":148,"movieTrailer":"https://youtu.be/JfVOs4VSpmA","moviePoster":"https://m.media-amazon.com/images/M/MV5BZWMyYzFjYTYtNTRjYi00OGExLWE2YzgtOGRmYjAxZTU3NzBiXkEyXkFqcGdeQXVyMzQ0MzA0NTM@._V1_FMjpg_UY711_.jpg"}
 {"id":8,"title":"The Avengers","movieIMDbRating":8,"totalRatingCount":1364943,"totalUserReviews":"2K","totalCriticReviews":"755","metaScore":"69","movieGenres":["Action","Adventure","Sci-Fi"],"directors":["Joss Whedon"],"datePublished":"2012-05-11","creators":["Joss Whedon","Zak Penn"],"mainStars":["Robert Downey Jr.","Chris Evans","Scarlett Johansson"],"description":"Earth's mightiest heroes must come together and learn to fight as a team if they are going to stop the mischievous Loki and his alien army from enslaving humanity.","duration":143,"movieTrailer":"https://youtu.be/eOrNdBpGMv8","moviePoster":"https://m.media-amazon.com/images/M/MV5BNDYxNjQyMjAtNTdiOS00NGYwLWFmNTAtNThmYjU5ZGI2YTI1XkEyXkFqcGdeQXVyMTMxODk2OTU@._V1_.jpg"}
 {"id":9,"title":"The Dark Knight","movieIMDbRating":9,"totalRatingCount":2581534,"totalUserReviews":"8.2K","totalCriticReviews":"436","metaScore":"84","movieGenres":["Action","Crime","Drama"],"directors":["Christopher Nolan"],"datePublished":"2008-07-18","creators":["Jonathan Nolan","Christopher Nolan","David S. Goyer"],"mainStars":["Christian Bale","Heath Ledger","Aaron Eckhart"],"description":"When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice.","duration":152,"movieTrailer":"https://youtu.be/EXeTwQWrcwY","moviePoster":"https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_FMjpg_UX1000_.jpg"}
-{"id":10,"title":"Thor Ragnarok","movieIMDbRating":7.9,"totalRatingCount":715040,"totalUserReviews":"1.8K","totalCriticReviews":"462","metaScore":"74","movieGenres":["Action","Adventure","Comedy"],"directors":["Taika Waititi"],"datePublished":"2017-11-03","creators":["Eric Pearson","Craig Kyle","Christopher L. Yost"],"mainStars":["Chris Hemsworth","Tom Hiddleston","Cate Blanchett"],"description":"Imprisoned on the planet Sakaar, Thor must race against time to return to Asgard and stop Ragnarök, the destruction of his world, at the hands of the powerful and ruthless villain Hela.","duration":130,"movieTrailer":"https://youtu.be/v7MGUNV8MxU","moviePoster":""}
+{
+  "id": 10,
+  "title": "Thor Ragnarok",
+  "movieIMDbRating": 7.9,
+  "totalRatingCount": 715040,
+  "totalUserReviews": "1.8K",
+  "totalCriticReviews": "462",
+  "metaScore": "74",
+  "movieGenres": [ "Action", "Adventure", "Comedy" ],
+  "directors": [ "Taika Waititi" ],
+  "datePublished": "2017-11-03",
+  "creators": [ "Eric Pearson", "Craig Kyle", "Christopher L. Yost" ],
+  "mainStars": [ "Chris Hemsworth", "Tom Hiddleston", "Cate Blanchett" ],
+  "description": "Imprisoned on the planet Sakaar, Thor must race against time to return to Asgard and stop Ragnarök, the destruction of his world, at the hands of the powerful and ruthless villain Hela.",
+  "duration": 130,
+  "movieTrailer": "https://youtu.be/v7MGUNV8MxU",
+  "moviePoster": "https://m.media-amazon.com/images/M/MV5BMjMyNDkzMzI1OF5BMl5BanBnXkFtZTgwODcxODg5MjI@._V1_FMjpg_UX1000_.jpg"
+}
