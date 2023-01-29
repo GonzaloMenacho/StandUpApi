@@ -17,7 +17,7 @@ namespace API
         public string TotalCriticReviews { get; set; } // i.e., "593". stored as string in dataset
         public string MetaScore { get; set; } // 0 - 100. CriticRating.
                                               // TODO: for some reason wont work unless set to string. fix?
-        public string[] MovieGenres { get; set; } // TODO: how to grab the list?
+        public string[] MovieGenres { get; set; }
         public string[] Directors { get; set; }
         public string DatePublished { get; set; } // i.e., "2019-04-26". stored as string in dataset
         public string[] Creators { get; set; }
