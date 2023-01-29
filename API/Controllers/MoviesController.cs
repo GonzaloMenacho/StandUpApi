@@ -48,21 +48,21 @@ namespace API.Controllers
 
         [HttpDelete("del/{id}")]
         // delete based on id (http://localhost:9200/movies/_search) -> find id
-        public async void Delete(string id)
+        public async void Delete(string elasticId)
         {
-            var response = await _elasticClient.DeleteAsync<Movie>(id, d => d
+            var response = await _elasticClient.DeleteAsync<Movie>(elasticId, d => d
               .Index(movieIndex));
 
         }
 
         [HttpPut("edit/{id}")]
-        public async Task<Movie> Put(int id, string title, float userrating, string description, string criticrating, double totalratingcount, string totaluserreviews,
+        public async Task<Movie> Put(int elasticId, int movieID, string title, float userrating, string description, string criticrating, double totalratingcount, string totaluserreviews,
             string totalcriticreviews, string[] genres, string datepublished, int duration, string movietrailer, string movieposter)
         {
 
-            var response = await _elasticClient.UpdateAsync<Movie>(id, u => u
+            var response = await _elasticClient.UpdateAsync<Movie>(elasticId, u => u
                 .Index(movieIndex)
-                .Doc(new Movie { Id = id, Title = title, movieIMDbRating = userrating, Description = description, MetaScore = criticrating, TotalRatingCount = totalratingcount, TotalUserReviews = totaluserreviews,
+                .Doc(new Movie { Id = movieID, Title = title, movieIMDbRating = userrating, Description = description, MetaScore = criticrating, TotalRatingCount = totalratingcount, TotalUserReviews = totaluserreviews,
                 TotalCriticReviews = totalcriticreviews, MovieGenres = genres, DatePublished = datepublished, Duration = duration, MovieTrailer = movietrailer, MoviePoster=movieposter}));
 
             return null;

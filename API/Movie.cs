@@ -9,7 +9,7 @@ namespace API
     public class Movie
     {
         // data type reflects json in ES
-        public int Id { get; set; }
+        public int Id { get; set; } // movieID
         public string Title { get; set; }
         public float movieIMDbRating { get; set; } // 0 - 10. UserRating
         public double TotalRatingCount { get; set; }
@@ -26,5 +26,6 @@ namespace API
         public int Duration { get; set; } // in minutes
         public string MovieTrailer { get; set; }  // youtube link to be embedded
         public string MoviePoster { get; set; }
+        //public string @timestamp { get; set; } // one day after date published
     }
 }
