@@ -42,7 +42,8 @@ namespace API.Controllers
         [HttpPost("add")]
         public async Task<string> Post(Movie value)
         {
-            // date is required in YYYY-MM-DD format for post to work
+            // TODO: create an autoincrementing function for movieID and ensure no two movies have the same ID
+            // Date automatically filled out
             var response = await _elasticClient.IndexAsync<Movie>(value, x => x.Index(movieIndex)); // pass incoming value and index
             return response.Id; // Id created when making a post call
         }

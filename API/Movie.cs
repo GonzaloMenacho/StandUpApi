@@ -9,7 +9,7 @@ namespace API
     public class Movie
     {
         // data type reflects json in ES
-        // public int Id { get; set; } // movieID
+        public int MovieID { get; set; } // movieID
         public string Title { get; set; }
         public float movieIMDbRating { get; set; } // 0 - 10. UserRating
         public double TotalRatingCount { get; set; }
@@ -18,7 +18,7 @@ namespace API
         public int MetaScore { get; set; } // 0 - 100. CriticRating.
         public string[] MovieGenres { get; set; }
         public string[] Directors { get; set; }
-        public string DatePublished { get; set; } // i.e., "2019-04-26". stored as string in dataset
+        public DateTime DatePublished { get; set; } // i.e., "2019-04-26". stored as string in dataset
         public string[] Creators { get; set; }
         public string[] MainStars { get; set; }
         public string Description { get; set; }
