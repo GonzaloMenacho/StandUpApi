@@ -18,7 +18,7 @@ namespace API
         public int MetaScore { get; set; } // 0 - 100. CriticRating.
         public string[] MovieGenres { get; set; }
         public string[] Directors { get; set; }
-        public string DatePublished { get; set; } // i.e., "2019-04-26". stored as string in dataset
+        public DateTime DatePublished { get; set; } // i.e., "2019-04-26". stored as string in dataset
         public string[] Creators { get; set; }
         public string[] MainStars { get; set; }
         public string Description { get; set; }
