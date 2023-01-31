@@ -1,3 +1,4 @@
+using Nest;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,13 +19,14 @@ namespace API
         public int MetaScore { get; set; } // 0 - 100. CriticRating.
         public string[] MovieGenres { get; set; }
         public string[] Directors { get; set; }
-        public DateTime DatePublished { get; set; } // i.e., "2019-04-26". stored as string in dataset
+        public DateTime DatePublished { get; set; }
+        [Date(Name = "@timestamp")]
+        public DateTime Timestamp { get; set; } 
         public string[] Creators { get; set; }
         public string[] MainStars { get; set; }
         public string Description { get; set; }
         public int Duration { get; set; } // in minutes
         public string MovieTrailer { get; set; }  // youtube link to be embedded
         public string MoviePoster { get; set; }
-        //public string @timestamp { get; set; } // one day after date published. automatically assigned by elastic
     }
 }
