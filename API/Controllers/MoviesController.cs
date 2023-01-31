@@ -42,7 +42,8 @@ namespace API.Controllers
         [HttpPost("add")]
         public async Task<string> Post(Movie value)
         {
-            // date is required in YYYY-MM-DD format for post to work
+            // TODO: create an autoincrementing function for movieID and ensure no two movies have the same ID
+            // Date automatically filled out
             var response = await _elasticClient.IndexAsync<Movie>(value, x => x.Index(movieIndex)); // pass incoming value and index
             return response.Id; // Id created when making a post call
         }
@@ -56,16 +57,78 @@ namespace API.Controllers
 
         }
 
-        /*
-        [HttpPut("edit/{id}")]
-        public async Task<Movie> Put(int elasticId, int movieID, string title, float userrating, string description, string criticrating, double totalratingcount, string totaluserreviews,
-            string totalcriticreviews, string[] genres, string datepublished, int duration, string movietrailer, string movieposter)
+        [HttpPut("edit/{elasticId}")]
+        public async Task<string> Put(string elasticId, Movie value)
         {
-
+            // TODO: create an autoincrementing function for movieID and ensure no two movies have the same ID
+            // Date automatically filled out
             var response = await _elasticClient.UpdateAsync<Movie>(elasticId, u => u
                 .Index(movieIndex)
-                .Doc(new Movie { Id = movieID, Title = title, movieIMDbRating = userrating, Description = description, MetaScore = criticrating, TotalRatingCount = totalratingcount, TotalUserReviews = totaluserreviews,
-                TotalCriticReviews = totalcriticreviews, MovieGenres = genres, DatePublished = datepublished, Duration = duration, MovieTrailer = movietrailer, MoviePoster=movieposter}));
+                .Doc(new Movie
+                {
+                    MovieID = value.MovieID,
+                    Title = value.Title,
+                    movieIMDbRating = value.movieIMDbRating,
+                    TotalRatingCount = value.TotalRatingCount,
+                    TotalUserReviews = value.TotalUserReviews,
+                    TotalCriticReviews = value.TotalCriticReviews,
+                    MetaScore = value.MetaScore,
+                    MovieGenres = value.MainStars, 
+                    Directors = value.Directors, 
+                    DatePublished = value.DatePublished,
+                    Timestamp = value.Timestamp,
+                    Creators = value.Creators,
+                    MainStars = value.MainStars,
+                    Description = value.Description,
+                    Duration = value.Duration,
+                    MovieTrailer = value.MovieTrailer,
+                    MoviePoster = value.MoviePoster
+                }));
+
+            return response.Id;
+        }
+
+        // TODO: cant use arrays with this algorithm. figure it out
+        /*[HttpPut("edit/{elasticId}")]
+        public async Task<Movie> Put(string elasticId, 
+            int movieID, 
+            string title, 
+            float userrating, 
+            double totalratingcount, 
+            string totaluserreviews, 
+            int totalcriticreviews, 
+            int criticrating, 
+            //string[] genres, 
+            //string[] directors, 
+            DateTime datepublished, 
+            DateTime timestamp, 
+            //string[] creators, 
+            //string[] mainstars, 
+            string description, 
+            int duration, 
+            string movietrailer, 
+            string movieposter)
+        {
+            var response = await _elasticClient.UpdateAsync<Movie>(elasticId, u => u
+                .Index(movieIndex)
+                .Doc(new Movie { 
+                    MovieID = movieID, 
+                    Title = title, 
+                    movieIMDbRating = userrating,
+                    TotalRatingCount = totalratingcount,
+                    TotalUserReviews = totaluserreviews,
+                    TotalCriticReviews = totalcriticreviews,
+                    MetaScore = criticrating,
+                    //MovieGenres = genres, 
+                    //Directors = directors, 
+                    DatePublished = datepublished, 
+                    Timestamp = timestamp,
+                    //Creators = creators,
+                    //MainStars = mainstars,
+                    Description = description,
+                    Duration = duration, 
+                    MovieTrailer = movietrailer, 
+                    MoviePoster = movieposter}));
 
             return null;
         }
