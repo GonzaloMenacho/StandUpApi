@@ -20,6 +20,7 @@ namespace API.Controllers
             _elasticClient = elasticClient;
 
         }
+
         [HttpGet] //api/movies
         public async Task<ActionResult<List<Movie>>> GetMovies()
         {
@@ -30,6 +31,20 @@ namespace API.Controllers
 
             return response.Documents.ToList();
         }
+
+        //------------------------------------------------------------------/
+        // Search for movies by rating
+        [HttpGet("rating/{rating}")] //api/movies/rating/{rating}
+        public async Task<ActionResult<List<Movie>>> GetRating(string rating)
+        {
+            var response = await _elasticClient.SearchAsync<Movie>(s => s // will return search request
+                .Index(movieIndex) // index name
+                .Query(q => q.Term(r => r.movieIMDbRating, rating) || q.Match(m => m.Field(f => f.movieIMDbRating).Query(rating)))); 
+                // term allows to find docs matching an exact query
+                // match allows for the user to enter in some text that text to match any part of the content in the document
+            return response.Documents.ToList();
+        }
+        //------------------------------------------------------------------/
 
         // return movie based on the movie name path
         // pass index name here if we want to deal with different indices
