@@ -11,7 +11,7 @@ namespace API.Controllers
     [Route("api/[controller]")]
     public class MoviesController : ControllerBase
     {
-        private readonly string movieIndex = "movies";
+        private readonly string movieIndex = "moviestest";
         private readonly IElasticClient _elasticClient;
 
         // create elasticClient field thru injection
@@ -21,7 +21,7 @@ namespace API.Controllers
 
         }
 
-        [HttpGet] //api/movies
+        [HttpGet("get10")] //api/movies
         public async Task<ActionResult<List<Movie>>> GetMovies()
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s
@@ -32,6 +32,24 @@ namespace API.Controllers
             return response.Documents.ToList();
         }
 
+        [HttpGet("getall")] //api/movies
+        public async Task<List<Movie>> GetAllMovies()
+        {
+            var response = await _elasticClient.SearchAsync<Movie>(s => s
+                .Index(movieIndex)
+                .Query(q => q).Scroll("10s"));
+            // scrolls through the docs for 10 seconds)
+            List<Movie> responseList = new List<Movie>();
+
+            while(response.Documents.Any())       // keep scrolling until there are no documents
+            {
+                responseList.AddRange(response.Documents.ToList());
+                response = _elasticClient.Scroll<Movie>("10s", response.ScrollId);
+            }
+
+            return responseList;
+        }
+
         //------------------------------------------------------------------/
         // Search for movies by rating
         [HttpGet("rating/{rating}")] //api/movies/rating/{rating}
@@ -39,7 +57,7 @@ namespace API.Controllers
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s // will return search request
                 .Index(movieIndex) // index name
-                .Query(q => q.Term(r => r.movieIMDbRating, rating) || q.Match(m => m.Field(f => f.movieIMDbRating).Query(rating)))); 
+                .Query(q => q.Term(r => r.MovieIMDbRating, rating) || q.Match(m => m.Field(f => f.MovieIMDbRating).Query(rating)))); 
                 // term allows to find docs matching an exact query
                 // match allows for the user to enter in some text that text to match any part of the content in the document
             return response.Documents.ToList();
