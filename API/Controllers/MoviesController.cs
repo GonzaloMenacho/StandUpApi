@@ -26,7 +26,7 @@ namespace API.Controllers
             var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => q.MatchAll()));
-            // returns all movies
+            // returns all movies (actually defaults to first 10)
 
             return response.Documents.ToList();
         }
