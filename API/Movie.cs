@@ -12,7 +12,7 @@ namespace API
         // data type reflects json in ES
         public int MovieID { get; set; } // movieID
         public string Title { get; set; }
-        public float movieIMDbRating { get; set; } // 0 - 10. UserRating
+        public float MovieIMDbRating { get; set; } // 0 - 10. UserRating
         public double TotalRatingCount { get; set; }
         public string TotalUserReviews { get; set; } // i.e., "9.5k". stored as string in dataset
         public int TotalCriticReviews { get; set; } // i.e., "593". stored as int in dataset

@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Nest;
+using System;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace API.Controllers
 {
@@ -7,8 +11,9 @@ namespace API.Controllers
     [Route("api/[controller]")]
     public class MoviesController : ControllerBase
     {
-        private readonly string movieIndex = "test2";
+        private readonly string movieIndex = "movies";
         private readonly IElasticClient _elasticClient;
+
         // create elasticClient field thru injection
         public MoviesController(IElasticClient elasticClient)
         {
@@ -22,7 +27,7 @@ namespace API.Controllers
             var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => q.MatchAll()));
-            // returns all movies
+            // returns all movies (actually defaults to first 10)
 
             return response.Documents.ToList();
         }
@@ -63,6 +68,38 @@ namespace API.Controllers
             return response.Id; // Id created when making a post call
         }
 
+        [HttpPost("json-upload")]
+        public async Task<string> Upload(List<IFormFile> files)
+        {
+            string returnString = "";
+            // validate the json, parse it, store each movie
+            foreach (IFormFile file in files)
+            {
+                try
+                {
+                    var serializerSettings = new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                        WriteIndented = true
+                    };
+                    string json = JsonHandler.ReadAsList(file);
+                    var movies = JsonSerializer.Deserialize<List<Movie>>(json, serializerSettings);
+                    try
+                    {
+                        foreach (Movie movie in movies)
+                        {
+                            movie.Timestamp = movie.DatePublished;
+                            string response = await Post(movie);
+                            returnString += response + '\n';
+                        }
+                    } catch (Exception e) { returnString += "Failed to post movie.\n" + e;}
+                }
+                catch(Exception e) { returnString += "Invalid File. Make sure the file is JSON and not NDJSON\n" + e; }
+
+            }
+            return returnString;
+        }
+
         [HttpDelete("del/{elasticId}")]
         // delete based on id (http://localhost:9200/movies/_search) -> find id
         public async void Delete(string elasticId)
@@ -83,13 +120,13 @@ namespace API.Controllers
                 {
                     MovieID = value.MovieID,
                     Title = value.Title,
-                    movieIMDbRating = value.movieIMDbRating,
+                    MovieIMDbRating = value.MovieIMDbRating,
                     TotalRatingCount = value.TotalRatingCount,
                     TotalUserReviews = value.TotalUserReviews,
                     TotalCriticReviews = value.TotalCriticReviews,
                     MetaScore = value.MetaScore,
-                    MovieGenres = value.MainStars, 
-                    Directors = value.Directors, 
+                    MovieGenres = value.MainStars,
+                    Directors = value.Directors,
                     DatePublished = value.DatePublished,
                     Timestamp = value.Timestamp,
                     Creators = value.Creators,
@@ -102,6 +139,7 @@ namespace API.Controllers
 
             return response.Id;
         }
+        
 
         // TODO: cant use arrays with this algorithm. figure it out
         /*[HttpPut("edit/{elasticId}")]
@@ -150,3 +188,18 @@ namespace API.Controllers
         */
     }
 }
+
+class JsonHandler
+{
+    public static string ReadAsList(IFormFile file)
+    {
+        var result = new StringBuilder();
+        using (var reader = new StreamReader(file.OpenReadStream()))
+        {
+            while (reader.Peek() >= 0)
+                result.AppendLine(reader.ReadLine());
+        }
+        return result.ToString();
+    }
+}
+
