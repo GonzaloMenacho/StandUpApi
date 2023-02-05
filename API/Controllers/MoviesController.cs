@@ -52,15 +52,34 @@ namespace API.Controllers
 
         //------------------------------------------------------------------/
         // Search for movies by rating
-        [HttpGet("rating/{rating}")] //api/movies/rating/{rating}
-        public async Task<ActionResult<List<Movie>>> GetRating(string rating)
+        [HttpGet("rating/")] //api/movies/rating/{rating}
+        public async Task<ActionResult<List<Movie>>> GetRating(string rating, float minRating, float maxRating)
         {
-            var response = await _elasticClient.SearchAsync<Movie>(s => s // will return search request
+            if (!string.IsNullOrEmpty(rating))
+            {
+                var response = await _elasticClient.SearchAsync<Movie>(s => s // will return search request
                 .Index(movieIndex) // index name
-                .Query(q => q.Term(r => r.MovieIMDbRating, rating) || q.Match(m => m.Field(f => f.MovieIMDbRating).Query(rating)))); 
+                .Query(q => q.Term(r => r.MovieIMDbRating, rating) || q.Match(m => m.Field(f => f.MovieIMDbRating).Query(rating))));
                 // term allows to find docs matching an exact query
                 // match allows for the user to enter in some text that text to match any part of the content in the document
-            return response.Documents.ToList();
+                return response.Documents.ToList();
+
+            }
+            else
+            {
+                var response = _elasticClient.Search<Movie>(s => s
+                    .Index(movieIndex)
+                        .Query(q => q
+                            .Range(r => r
+                                .Field(f => f.MovieIMDbRating)
+                                .GreaterThanOrEquals(minRating)
+                                    .LessThanOrEquals(maxRating)
+                            )
+                        )
+                );
+                return response.Documents.ToList();
+            }
+
         }
         //------------------------------------------------------------------/
 
@@ -110,9 +129,10 @@ namespace API.Controllers
                             string response = await Post(movie);
                             returnString += response + '\n';
                         }
-                    } catch (Exception e) { returnString += "Failed to post movie.\n" + e;}
+                    }
+                    catch (Exception e) { returnString += "Failed to post movie.\n" + e; }
                 }
-                catch(Exception e) { returnString += "Invalid File. Make sure the file is JSON and not NDJSON\n" + e; }
+                catch (Exception e) { returnString += "Invalid File. Make sure the file is JSON and not NDJSON\n" + e; }
 
             }
             return returnString;
@@ -157,7 +177,7 @@ namespace API.Controllers
 
             return response.Id;
         }
-        
+
 
         // TODO: cant use arrays with this algorithm. figure it out
         /*[HttpPut("edit/{elasticId}")]
