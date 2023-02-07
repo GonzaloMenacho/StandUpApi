@@ -58,7 +58,7 @@ In the Ubuntu termal, navigate to the "../StandUpApi/docker" folder noted in the
 In your Ubuntu terminal, which should be pointing to the folder where your docker-compose.yml is located, enter the command "docker-compose up -d". If the previous setup steps have been followed, you should see downloading bars in your Ubuntu terminal. Once these have finished and your Ubuntu terminal says Ready, then Elasticsearch and Kibana have been installed successfully. Make sure to leave the terminal open until you are ready to shut down Elasticsearch and Kibana so you don't have to enter the file path again.
 </li>
 <li>
-To access Kibana, open a web browser, such as Firefox or Google Chrome, and enter "http://localhost:8200" into your url bar.
+To access Kibana, open a web browser, such as Firefox or Google Chrome, and enter "http://localhost:5601" into your url bar.
 </li>
 <h2>
   Step 6: Shutting down docker-compose.yml
