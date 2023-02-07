@@ -4,6 +4,7 @@ using System;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace API.Controllers
 {
@@ -11,7 +12,7 @@ namespace API.Controllers
     [Route("api/[controller]")]
     public class MoviesController : ControllerBase
     {
-        private readonly string movieIndex = "moviestest";
+        private readonly string movieIndex = "movies";
         private readonly IElasticClient _elasticClient;
 
         // create elasticClient field thru injection
@@ -81,11 +82,74 @@ namespace API.Controllers
             }
 
         }
-        //------------------------------------------------------------------/
 
-        // return movie based on the movie name path
-        // pass index name here if we want to deal with different indices
-        [HttpGet("{title}")] //api/movies/movieX
+
+        //------------------------------------------------------------------/
+        // Search for movies by titles
+
+        //split the title string into a list of tokens
+        //use regex to process the tokens according to restrictions
+        //send post-processed tokens to search function
+        //return the search results
+
+        [HttpGet("title/")] //api/movies/title/{m_title}
+        public async Task<ActionResult<List<Movie>>> GetMoviesByTitle(string m_title = "")
+        {
+            //pre-processing
+            m_title = Regex.Replace(m_title, @"[^\w- ]|_", " ");   //replace illegal chars and underscores with a space
+            m_title = m_title.Trim();   // trim leading and ending whitespaces
+
+            // replacing each character in the string with regex that ignores capitalization.
+            // i.e. "a" and "A" become "[Aa]"
+            string fixed_title = "";
+            foreach (char c in m_title)
+            {
+                if (c >= 'a' && c <= 'z')
+                {
+                    fixed_title += $"[{(char)(c - 32)}{c}]";
+                }
+                else if (c >= 'A' && c <= 'Z')
+                {
+                    fixed_title += $"[{c}{(char)(c+32)}]";
+                }
+                else
+                {
+                    fixed_title += $"[{c}]?";   // if " ", "-", or other special character, make it zero or 1
+                }
+            }
+            //Console.WriteLine(fixed_title + "end");
+
+            // regex to grab every string with the fixed_title as the substring
+            m_title = $".*{fixed_title}.*";
+
+
+            //searching
+            var response = await _elasticClient.SearchAsync<Movie>(s => s
+            // this should sort by relevancy score, but testing with optional characters in the above
+            // regex creation doesn't show it working. needs to be looked into.
+                .Sort(ss => ss
+                    .Descending(SortSpecialField.Score)
+                )
+            //query the given movie index
+                .Index(movieIndex)
+                .Query(q => q
+                    .Regexp(c => c
+                        .Name(m_title)          // naming the search (not important!)
+                        .Field(p => p.Title)    // the field we're querying
+                        .Value(m_title)         // the query value
+                        .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
+                    )
+                )
+            );
+
+            return response.Documents.ToList();
+        }
+
+            //------------------------------------------------------------------/
+
+            // return movie based on the movie name path
+            // pass index name here if we want to deal with different indices
+            [HttpGet("{title}")] //api/movies/movieX
         public async Task<Movie> Get(string title)
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s
