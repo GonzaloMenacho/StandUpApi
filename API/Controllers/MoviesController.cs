@@ -12,6 +12,7 @@ namespace API.Controllers
     [Route("api/[controller]")]
     public class MoviesController : ControllerBase
     {
+
         private readonly string movieIndex = "movies";
         private readonly IElasticClient _elasticClient;
 
@@ -42,7 +43,7 @@ namespace API.Controllers
             // scrolls through the docs for 10 seconds)
             List<Movie> responseList = new List<Movie>();
 
-            while(response.Documents.Any())       // keep scrolling until there are no documents
+            while (response.Documents.Any())       // keep scrolling until there are no documents
             {
                 responseList.AddRange(response.Documents.ToList());
                 response = _elasticClient.Scroll<Movie>("10s", response.ScrollId);
@@ -52,32 +53,66 @@ namespace API.Controllers
         }
 
         //------------------------------------------------------------------/
-        // Search for movies by rating
+        // Search for movies by rating 
+        // either with a specific rating param
+        // or a range rating
+
+        // regex for floating numbers 0 - 10
+        private readonly Regex ratingRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
+
         [HttpGet("rating/")] //api/movies/rating/{rating}
-        public async Task<ActionResult<List<Movie>>> GetRating(string rating, float minRating, float maxRating)
+        public async Task<ActionResult<List<Movie>>> GetRating(string specificRating, float minRating = 0, float maxRating = 10)
         {
-            if (!string.IsNullOrEmpty(rating))
+            // check to see if there is a specific rating
+            if (!string.IsNullOrEmpty(specificRating))
             {
-                var response = await _elasticClient.SearchAsync<Movie>(s => s // will return search request
+                // check if input is a floating number 0 - 10
+                if (!float.TryParse(specificRating, out float ratingValue) || !ratingRegex.IsMatch(specificRating))
+                {
+                    return BadRequest("The 'rating' parameter must be a number between 0 & 10.");
+                }
+                // will return search request
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                // sort by relevancy score
+                .Sort(ss => ss
+                    .Descending(SortSpecialField.Score)
+                )
                 .Index(movieIndex) // index name
-                .Query(q => q.Term(r => r.MovieIMDbRating, rating) || q.Match(m => m.Field(f => f.MovieIMDbRating).Query(rating))));
-                // term allows to find docs matching an exact query
-                // match allows for the user to enter in some text that text to match any part of the content in the document
+                .Query(q => q.Term(r => r.MovieIMDbRating, specificRating) || q.Match(m => m.Field(f => f.MovieIMDbRating).Query(specificRating))));
+                // term allows finding docs matching an exact query
+                // match allows for the user to enter in some text and that text to match any part of the content in the document
                 return response.Documents.ToList();
 
             }
+
+            // for range of ratings
             else
             {
+                if (minRating > maxRating)
+                {
+                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
+                }
+
+                // regex check
+                else if (!ratingRegex.IsMatch(minRating.ToString()) || !ratingRegex.IsMatch(maxRating.ToString()))
+                {
+                    return BadRequest("The 'minRating' and 'maxRating' must between 0 and 10");
+                }
+
+                // return search request
                 var response = _elasticClient.Search<Movie>(s => s
+                // sort by relevancy score
+                .Sort(ss => ss
+                    .Descending(SortSpecialField.Score)
+                )
                     .Index(movieIndex)
                         .Query(q => q
                             .Range(r => r
                                 .Field(f => f.MovieIMDbRating)
                                 .GreaterThanOrEquals(minRating)
-                                    .LessThanOrEquals(maxRating)
+                                    .LessThanOrEquals(maxRating))
                             )
-                        )
-                );
+                        );
                 return response.Documents.ToList();
             }
 
@@ -110,7 +145,7 @@ namespace API.Controllers
                 }
                 else if (c >= 'A' && c <= 'Z')
                 {
-                    fixed_title += $"[{c}{(char)(c+32)}]";
+                    fixed_title += $"[{c}{(char)(c + 32)}]";
                 }
                 else
                 {
@@ -145,11 +180,11 @@ namespace API.Controllers
             return response.Documents.ToList();
         }
 
-            //------------------------------------------------------------------/
+        //------------------------------------------------------------------/
 
-            // return movie based on the movie name path
-            // pass index name here if we want to deal with different indices
-            [HttpGet("{title}")] //api/movies/movieX
+        // return movie based on the movie name path
+        // pass index name here if we want to deal with different indices
+        [HttpGet("{title}")] //api/movies/movieX
         public async Task<Movie> Get(string title)
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s
