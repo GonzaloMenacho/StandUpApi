@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace API
 {
     // revuew model class
-    public class Reviews
+    public class Review
     {
         // data type reflects json in ES
         // property name matches the name of the field within ES
