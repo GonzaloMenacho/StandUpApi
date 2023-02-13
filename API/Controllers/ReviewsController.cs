@@ -53,24 +53,24 @@ namespace API.Controllers
         }
 
         //------------------------------------------------------------------/
-        // Search for movies by titles
+        // Search for reviews by text content
 
         //split the title string into a list of tokens
         //use regex to process the tokens according to restrictions
         //send post-processed tokens to search function
         //return the search results
 
-        [HttpGet("title/")] //api/reviews/title/{m_title}
-        public async Task<ActionResult<List<Review>>> GetMoviesByTitle(string m_title = "")
+        [HttpGet("text/")] //api/reviews/text/{m_text}
+        public async Task<ActionResult<List<Review>>> GetReviewsByText(string m_text = "", bool searchOnBody = false)
         {
             //pre-processing
-            m_title = Regex.Replace(m_title, @"[^\w- ]|_", " ");   //replace illegal chars and underscores with a space
-            m_title = m_title.Trim();   // trim leading and ending whitespaces
+            m_text = Regex.Replace(m_text, @"[^\w- ]|_", " ");   //replace illegal chars and underscores with a space
+            m_text = m_text.Trim();   // trim leading and ending whitespaces
 
             // replacing each character in the string with regex that ignores capitalization.
             // i.e. "a" and "A" become "[Aa]"
             string fixed_title = "";
-            foreach (char c in m_title)
+            foreach (char c in m_text)
             {
                 if (c >= 'a' && c <= 'z')
                 {
@@ -88,29 +88,51 @@ namespace API.Controllers
             //Console.WriteLine(fixed_title + "end");
 
             // regex to grab every string with the fixed_title as the substring
-            m_title = $".*{fixed_title}.*";
-
+            m_text = $".*{fixed_title}.*";
 
             //searching
-            var response = await _elasticClient.SearchAsync<Review>(s => s
-            // this should sort by relevancy score, but testing with optional characters in the above
-            // regex creation doesn't show it working. needs to be looked into.
-                .Sort(ss => ss
-                    .Descending(SortSpecialField.Score)
-                )
-            //query the given review index
-                .Index(reviewIndex)
-                .Query(q => q
-                    .Regexp(c => c
-                        .Name(m_title)          // naming the search (not important!)
-                        .Field(p => p.ReviewTitle)    // the field we're querying
-                        .Value(m_title)         // the query value
-                        .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
+            if (!searchOnBody)
+            {
+                var response = await _elasticClient.SearchAsync<Review>(s => s
+                    // this should sort by relevancy score, but testing with optional characters in the above
+                    // regex creation doesn't show it working. needs to be looked into.
+                    .Sort(ss => ss
+                        .Descending(SortSpecialField.Score)
                     )
-                )
-            );
-
-            return response.Documents.ToList();
+                    //query the given review index
+                    .Index(reviewIndex)
+                    .Query(q => q
+                        .Regexp(c => c
+                            .Name(m_text)          // naming the search (not important!)
+                            .Field(p => p.ReviewTitle)    // the field we're querying
+                            .Value(m_text)         // the query value
+                            .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
+                        )
+                    )
+                );
+                return response.Documents.ToList();
+            }
+            else
+            {
+                var response = await _elasticClient.SearchAsync<Review>(s => s
+                    // this should sort by relevancy score, but testing with optional characters in the above
+                    // regex creation doesn't show it working. needs to be looked into.
+                    .Sort(ss => ss
+                        .Descending(SortSpecialField.Score)
+                    )
+                    //query the given review index
+                    .Index(reviewIndex)
+                    .Query(q => q
+                        .Regexp(c => c
+                            .Name(m_text)          // naming the search (not important!)
+                            .Field(p => p.ReviewBody)    // the field we're querying
+                            .Value(m_text)         // the query value
+                            .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
+                        )
+                    )
+                );
+                return response.Documents.ToList();
+            }
         }
 
         //------------------------------------------------------------------/
