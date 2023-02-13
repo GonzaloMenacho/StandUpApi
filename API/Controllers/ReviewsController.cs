@@ -52,6 +52,19 @@ namespace API.Controllers
             return responseList;
         }
 
+        /*
+        [HttpGet("{title}")] //api/movies/movieX
+        public async Task<Review> Get(string title)
+        {
+            var response = await _elasticClient.SearchAsync<Review>(s => s
+                .Index(reviewIndex) // index name
+                .Query(q => q.Term(t => t.ReviewTitle, title) || q.Match(m => m.Field(f => f.ReviewTitle).Query(title)))); // term allows to find docs matching an exact query
+                                                                                                               // match allows for the user to enter in some text that text to match any part of the content in the document
+
+            return response.Documents.FirstOrDefault();
+        }
+        */
+
         //------------------------------------------------------------------/
         // Search for reviews by text content
 
@@ -61,37 +74,40 @@ namespace API.Controllers
         //return the search results
 
         [HttpGet("text/")] //api/reviews/text/{m_text}
-        public async Task<ActionResult<List<Review>>> GetReviewsByText(string m_text = "", bool searchOnBody = false)
+        public async Task<ActionResult<List<Review>>> GetReviewsByText(string m_text = "", bool searchOnTitle = true)
         {
             //pre-processing
+            string originaltext = m_text;
             m_text = Regex.Replace(m_text, @"[^\w- ]|_", " ");   //replace illegal chars and underscores with a space
             m_text = m_text.Trim();   // trim leading and ending whitespaces
 
             // replacing each character in the string with regex that ignores capitalization.
             // i.e. "a" and "A" become "[Aa]"
-            string fixed_title = "";
+            string fixed_text = "";
+            
             foreach (char c in m_text)
             {
                 if (c >= 'a' && c <= 'z')
                 {
-                    fixed_title += $"[{(char)(c - 32)}{c}]";
+                    fixed_text += $"[{(char)(c - 32)}{c}]";
                 }
                 else if (c >= 'A' && c <= 'Z')
                 {
-                    fixed_title += $"[{c}{(char)(c + 32)}]";
+                    fixed_text += $"[{c}{(char)(c + 32)}]";
                 }
                 else
                 {
-                    fixed_title += $"[{c}]?";   // if " ", "-", or other special character, make it zero or 1
+                    fixed_text += $"[{c}]?";   // if " ", "-", or other special character, make it zero or 1
                 }
             }
-            //Console.WriteLine(fixed_title + "end");
+            //Console.WriteLine(fixed_text + "end");
 
             // regex to grab every string with the fixed_title as the substring
-            m_text = $".*{fixed_title}.*";
+            m_text = $".*{fixed_text}.*";
+            
 
             //searching
-            if (!searchOnBody)
+            if (searchOnTitle)
             {
                 var response = await _elasticClient.SearchAsync<Review>(s => s
                     // this should sort by relevancy score, but testing with optional characters in the above
@@ -107,7 +123,8 @@ namespace API.Controllers
                             .Field(p => p.ReviewTitle)    // the field we're querying
                             .Value(m_text)         // the query value
                             .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
-                        )
+                        ) || q.Term(t => t.ReviewTitle, originaltext) 
+                        || q.Match(m => m.Field(f => f.ReviewTitle).Query(originaltext))
                     )
                 );
                 return response.Documents.ToList();
@@ -128,7 +145,8 @@ namespace API.Controllers
                             .Field(p => p.ReviewBody)    // the field we're querying
                             .Value(m_text)         // the query value
                             .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
-                        )
+                        ) || q.Term(t => t.ReviewBody, originaltext) 
+                        || q.Match(m => m.Field(f => f.ReviewBody).Query(originaltext))
                     )
                 );
                 return response.Documents.ToList();
