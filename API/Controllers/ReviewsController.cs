@@ -208,6 +208,74 @@ namespace API.Controllers
 
             return responseList;            // long response time. TODO: implement pagination??? do something to chunk out the responses.
         }
+
+        //------------------------------------------------------------------/
+        // Search for reviews by rating 
+        // either with a specific rating param
+        // or a range rating
+        // Gonzalo's code copy pasted from MovieController
+        // TODO: Create an index toggle for this function and other copy pasted request?
+
+        // regex for floating numbers 0 - 10
+        private readonly Regex ratingRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
+
+        [HttpGet("rating/")] //api/reviews/rating/{rating}
+        public async Task<ActionResult<List<Review>>> GetRating(string specificRating, float minRating = 0, float maxRating = 10)
+        {
+            // check to see if there is a specific rating
+            if (!string.IsNullOrEmpty(specificRating))
+            {
+                // check if input is a floating number 0 - 10
+                if (!float.TryParse(specificRating, out float ratingValue) || !ratingRegex.IsMatch(specificRating))
+                {
+                    return BadRequest("The 'rating' parameter must be a number between 0 & 10.");
+                }
+                // will return search request
+                var response = await _elasticClient.SearchAsync<Review>(s => s
+                // sort by relevancy score
+                .Sort(ss => ss
+                    .Descending(SortSpecialField.Score)
+                )
+                .Index(reviewIndex) // index name
+                .Query(q => q.Term(r => r.UserRating, specificRating) || q.Match(m => m.Field(f => f.UserRating).Query(specificRating))));
+                // term allows finding docs matching an exact query
+                // match allows for the user to enter in some text and that text to match any part of the content in the document
+                return response.Documents.ToList();
+
+            }
+
+            // for range of ratings
+            else
+            {
+                if (minRating > maxRating)
+                {
+                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
+                }
+
+                // regex check
+                else if (!ratingRegex.IsMatch(minRating.ToString()) || !ratingRegex.IsMatch(maxRating.ToString()))
+                {
+                    return BadRequest("The 'minRating' and 'maxRating' must between 0 and 10");
+                }
+
+                // return search request
+                var response = _elasticClient.Search<Review>(s => s
+                // sort by relevancy score
+                .Sort(ss => ss
+                    .Descending(SortSpecialField.Score)
+                )
+                    .Index(reviewIndex)
+                        .Query(q => q
+                            .Range(r => r
+                                .Field(f => f.UserRating)
+                                .GreaterThanOrEquals(minRating)
+                                    .LessThanOrEquals(maxRating))
+                            )
+                        );
+                return response.Documents.ToList();
+            }
+
+        }
     }
 }
 
