@@ -23,6 +23,10 @@ namespace API.Controllers
 
         }
 
+
+        //------------------------------------------------------------------/
+        // Returns first 10 reviews
+
         [HttpGet("get10")] //api/reviews
         public async Task<ActionResult<List<Review>>> GetReviews()
         {
@@ -34,7 +38,14 @@ namespace API.Controllers
             return response.Documents.ToList();
         }
 
-        [HttpGet("getall (DO NOT CALL)")] //api/reviews   Should not call. Included just in case but dude. theres ~50k reviews
+
+        //------------------------------------------------------------------/
+        // Returns all reviews
+        // TODO: Implement pagination
+        // Should not call until pagination is implemented.
+        // Included just in case but dude. theres ~50k reviews
+
+        [HttpGet("getall (DO NOT CALL)")] //api/reviews   
         public async Task<List<Review>> GetAllReviews()
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -52,18 +63,21 @@ namespace API.Controllers
             return responseList;
         }
 
-        /*
-        [HttpGet("{title}")] //api/movies/movieX
-        public async Task<Review> Get(string title)
+
+        //------------------------------------------------------------------/
+        // Search for reviews by username
+
+        [HttpGet("GetByUser")] //api/movies/GetByUser
+        public async Task<ActionResult<List<Review>>> Get(string username)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
                 .Index(reviewIndex) // index name
-                .Query(q => q.Term(t => t.ReviewTitle, title) || q.Match(m => m.Field(f => f.ReviewTitle).Query(title)))); // term allows to find docs matching an exact query
+                .Query(q => q.Term(t => t.Username, username) || q.Match(m => m.Field(f => f.Username).Query(username)))); // term allows to find docs matching an exact query
                                                                                                                // match allows for the user to enter in some text that text to match any part of the content in the document
 
-            return response.Documents.FirstOrDefault();
+            return response.Documents.ToList();
         }
-        */
+
 
         //------------------------------------------------------------------/
         // Search for reviews by text content
@@ -73,7 +87,7 @@ namespace API.Controllers
         //send post-processed tokens to search function
         //return the search results
 
-        [HttpGet("text/")] //api/reviews/text/{m_text}
+        [HttpGet("GetByBody")] //api/reviews/GetByBody/{m_text}
         public async Task<ActionResult<List<Review>>> GetReviewsByText(string m_text = "", bool searchOnTitle = true)
         {
             //pre-processing
@@ -153,10 +167,12 @@ namespace API.Controllers
             }
         }
 
+
         //------------------------------------------------------------------/
         // return review based on the movie its reviewing
-        // pass index name here if we want to deal with different indices
-        [HttpGet("GetByID/")] //api/reviews/GetByID/{movieID}
+        // only returns the first 10 matches
+
+        [HttpGet("GetByID")] //api/reviews/GetByID/{movieID}
         public async Task<ActionResult<List<Review>>> GetByID(string movieID)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -168,7 +184,12 @@ namespace API.Controllers
             return response.Documents.ToList();
         }
 
-        [HttpGet("GetAllByID/")] //api/reviews/GetByID/{movieID}
+        //------------------------------------------------------------------/
+        // return review based on the movie its reviewing
+        // returns ALL results. Big load, will be slow
+        // TODO: implement pagination
+
+        [HttpGet("GetAllByID")] //api/reviews/GetByID/{movieID}
         public async Task<ActionResult<List<Review>>> GetAllByID(string movieID)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
