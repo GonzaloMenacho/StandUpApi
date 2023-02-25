@@ -181,18 +181,19 @@ namespace API.Controllers
         }
 
         //------------------------------------------------------------------/
+        // return movie based on its movie id
+        // only returns the first 10 matches, but should only have 1 result anyway
 
-        // return movie based on the movie name path
-        // pass index name here if we want to deal with different indices
-        [HttpGet("{title}")] //api/movies/movieX
-        public async Task<Movie> Get(string title)
+        [HttpGet("GetByID")] //api/movies/GetByID/{movieID}
+        public async Task<ActionResult<List<Movie>>> GetByID(string movieID)
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex) // index name
-                .Query(q => q.Term(t => t.Title, title) || q.Match(m => m.Field(f => f.Title).Query(title)))); // term allows to find docs matching an exact query
-                                                                                                               // match allows for the user to enter in some text that text to match any part of the content in the document
+                .Query(q => q.Term(m => m.MovieID, movieID) || q.Match(m => m.Field(f => f.MovieID).Query(movieID))));
+            // term allows finding docs matching an exact query
+            // match allows for the user to enter in some text that text to match any part of the content in the document
 
-            return response.Documents.FirstOrDefault();
+            return response.Documents.ToList();
         }
 
         [HttpPost("add")]
@@ -278,7 +279,7 @@ namespace API.Controllers
         }
 
 
-        // TODO: cant use arrays with this algorithm. figure it out
+        // TODO: cant use arrays with this algorithm. is it necessary?
         /*[HttpPut("edit/{elasticId}")]
         public async Task<Movie> Put(string elasticId, 
             int movieID, 
