@@ -73,7 +73,7 @@ namespace API.Controllers
             var response = await _elasticClient.SearchAsync<Review>(s => s
                 .Index(reviewIndex) // index name
                 .Query(q => q.Term(t => t.Username, username) || q.Match(m => m.Field(f => f.Username).Query(username)))); // term allows to find docs matching an exact query
-                                                                                                               // match allows for the user to enter in some text that text to match any part of the content in the document
+                                                                                                                           // match allows for the user to enter in some text that text to match any part of the content in the document
 
             return response.Documents.ToList();
         }
@@ -98,7 +98,7 @@ namespace API.Controllers
             // replacing each character in the string with regex that ignores capitalization.
             // i.e. "a" and "A" become "[Aa]"
             string fixed_text = "";
-            
+
             foreach (char c in m_text)
             {
                 if (c >= 'a' && c <= 'z')
@@ -118,7 +118,7 @@ namespace API.Controllers
 
             // regex to grab every string with the fixed_title as the substring
             m_text = $".*{fixed_text}.*";
-            
+
 
             //searching
             if (searchOnTitle)
@@ -137,7 +137,7 @@ namespace API.Controllers
                             .Field(p => p.ReviewTitle)    // the field we're querying
                             .Value(m_text)         // the query value
                             .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
-                        ) || q.Term(t => t.ReviewTitle, originaltext) 
+                        ) || q.Term(t => t.ReviewTitle, originaltext)
                         || q.Match(m => m.Field(f => f.ReviewTitle).Query(originaltext))
                     )
                 );
@@ -159,7 +159,7 @@ namespace API.Controllers
                             .Field(p => p.ReviewBody)    // the field we're querying
                             .Value(m_text)         // the query value
                             .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
-                        ) || q.Term(t => t.ReviewBody, originaltext) 
+                        ) || q.Term(t => t.ReviewBody, originaltext)
                         || q.Match(m => m.Field(f => f.ReviewBody).Query(originaltext))
                     )
                 );
@@ -273,7 +273,7 @@ namespace API.Controllers
                             )
                         );
                 return response.Documents.ToList();
-            }            
+            }
         }
 
         //------------------------------------------------------------------/
@@ -304,6 +304,56 @@ namespace API.Controllers
             // match allows for the user to enter in some text that text to match any part of the content in the document
 
             return response.Documents.ToList();
+        }
+
+        //------------------------------------------------------------------/
+        // return review based on its usefulness score (min max included)
+        // only returns the first 10 matches
+        [HttpGet("GetByUsefulnessMinMax")] //api/reviews/GetByUsefulnessMinMax
+        public async Task<ActionResult<List<Review>>> GetByUsefulnessMinMax(string specificVotes, float minVotes = 0, float maxVotes = 10000000000)
+        {
+            // check to see if there is a specific rating
+            if (!string.IsNullOrEmpty(specificVotes))
+            {
+                // will return search request
+                var response = _elasticClient.Search<Review>(s => s
+                // sort by relevancy score
+                .Sort(ss => ss
+                    .Descending(SortSpecialField.Score)
+                )
+                .Index(reviewIndex) // index name
+                .Query(q => q.Term(r => r.UsefulnessVote, specificVotes) || q.Match(m => m.Field(f => f.UsefulnessVote).Query(specificVotes))));
+                // term allows finding docs matching an exact query
+                // match allows for the user to enter in some text and that text to match any part of the content in the document
+                return response.Documents.ToList();
+
+            }
+
+            // for range of ratings
+            // TODO: get this working
+            else
+            {
+                if (minVotes > maxVotes)
+                {
+                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
+                }
+
+                // return search request
+                var response = _elasticClient.Search<Review>(s => s
+                // sort by relevancy score
+                .Sort(ss => ss
+                    .Descending(SortSpecialField.Score)
+                )
+                    .Index(reviewIndex)
+                        .Query(q => q
+                            .Range(r => r
+                                .Field(f => f.UsefulnessVote)
+                                .GreaterThanOrEquals(minVotes)
+                                    .LessThanOrEquals(maxVotes))
+                            )
+                        );
+                return response.Documents.ToList();
+            }
         }
     }
 }
