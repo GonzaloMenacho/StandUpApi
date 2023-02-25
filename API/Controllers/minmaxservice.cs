@@ -1,5 +1,5 @@
 ﻿//
-//TODO: this simply does not work. make a proper query builder
+//TODO: this simply does not work. Never trust ChatGPT. make a proper query builder
 //
 using Microsoft.AspNetCore.Mvc;
 using Nest;
