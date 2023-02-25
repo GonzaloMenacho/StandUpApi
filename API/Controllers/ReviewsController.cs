@@ -217,7 +217,7 @@ namespace API.Controllers
         // TODO: Create an index toggle for this function and other copy pasted request?
 
         // regex for floating numbers 0 - 10
-        private readonly Regex ratingRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
+        private readonly Regex floatRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
 
         [HttpGet("rating/")] //api/reviews/rating/{rating}
         public async Task<ActionResult<List<Review>>> GetRating(string specificRating, float minRating = 0, float maxRating = 10)
@@ -226,7 +226,7 @@ namespace API.Controllers
             if (!string.IsNullOrEmpty(specificRating))
             {
                 // check if input is a floating number 0 - 10
-                if (!float.TryParse(specificRating, out float ratingValue) || !ratingRegex.IsMatch(specificRating))
+                if (!float.TryParse(specificRating, out float ratingValue) || !floatRegex.IsMatch(specificRating))
                 {
                     return BadRequest("The 'rating' parameter must be a number between 0 & 10.");
                 }
@@ -253,7 +253,7 @@ namespace API.Controllers
                 }
 
                 // regex check
-                else if (!ratingRegex.IsMatch(minRating.ToString()) || !ratingRegex.IsMatch(maxRating.ToString()))
+                else if (!floatRegex.IsMatch(minRating.ToString()) || !floatRegex.IsMatch(maxRating.ToString()))
                 {
                     return BadRequest("The 'minRating' and 'maxRating' must between 0 and 10");
                 }
@@ -273,8 +273,37 @@ namespace API.Controllers
                             )
                         );
                 return response.Documents.ToList();
-            }
+            }            
+        }
 
+        //------------------------------------------------------------------/
+        // return review based on its usefulness score
+        // only returns the first 10 matches
+        [HttpGet("GetByUsefulness")] //api/reviews/GetByID/{movieID}
+        public async Task<ActionResult<List<Review>>> GetByUsefulness(string useVotes)
+        {
+            var response = await _elasticClient.SearchAsync<Review>(s => s
+                .Index(reviewIndex) // index name
+                .Query(q => q.Term(r => r.UsefulnessVote, useVotes) || q.Match(m => m.Field(f => f.UsefulnessVote).Query(useVotes))));
+            // term allows finding docs matching an exact query
+            // match allows for the user to enter in some text that text to match any part of the content in the document
+
+            return response.Documents.ToList();
+        }
+
+        //------------------------------------------------------------------/
+        // return review based on its usefulness score
+        // only returns the first 10 matches
+        [HttpGet("GetByTotalVotes")] //api/reviews/GetByID/{movieID}
+        public async Task<ActionResult<List<Review>>> GetByVotes(string totalVotes)
+        {
+            var response = await _elasticClient.SearchAsync<Review>(s => s
+                .Index(reviewIndex) // index name
+                .Query(q => q.Term(r => r.TotalVotes, totalVotes) || q.Match(m => m.Field(f => f.TotalVotes).Query(totalVotes))));
+            // term allows finding docs matching an exact query
+            // match allows for the user to enter in some text that text to match any part of the content in the document
+
+            return response.Documents.ToList();
         }
     }
 }
