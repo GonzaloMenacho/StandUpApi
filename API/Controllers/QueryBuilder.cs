@@ -20,7 +20,7 @@ namespace API.Controllers
         public static QueryContainer Blah(string field, params string[] param)
         {
             var q = new QueryContainerDescriptor<Movie>().Bool(
-                b => b.Should(
+                b => b.Must(
                     InnerBlah(field, param)));
             return q;
             //return new QueryContainerDescriptor<Movie>().Match(m => InnerBlah(field, param)));

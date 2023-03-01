@@ -62,7 +62,7 @@ namespace API.Controllers
         // regex for floating numbers 0 - 10
         private readonly Regex ratingRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
 
-        [HttpGet("{rating}")] //api/movies/{rating}
+        [HttpGet("rating")] //api/movies/rating
         public async Task<ActionResult<List<Movie>>> GetRating(string specificRating, float minRating = 0, float maxRating = 10)
         {
             // check to see if there is a specific rating
@@ -129,7 +129,7 @@ namespace API.Controllers
         //send post-processed tokens to search function
         //return the search results
 
-        [HttpGet("{title}")] //api/movies/{title}
+        [HttpGet("title")] //api/movies/{title}
         public async Task<ActionResult<List<Movie>>> GetMoviesByTitle(string m_title = "")
         {
             //pre-processing
@@ -280,15 +280,15 @@ namespace API.Controllers
             return response.Id;
         }
 
-        /*
-        [HttpGet("QueryBuilder")]
+        
+        /*[HttpGet("QueryBuilder")]
         public async Task<ActionResult<List<Movie>>> GetMovieData([FromQuery] string field, [FromQuery] string[] param)
         {
             var query = QueryBuilder.Blah(field, param);
             var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => query));
             return response.Documents.ToList();
-        }
-        */
+        }*/
+        
 
         // TODO: cant use arrays with this algorithm. is it necessary?
         /*[HttpPut("edit/{elasticId}")]

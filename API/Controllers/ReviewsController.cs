@@ -219,7 +219,7 @@ namespace API.Controllers
         // regex for floating numbers 0 - 10
         private readonly Regex floatRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
 
-        [HttpGet("{rating}")] //api/reviews/{rating}
+        [HttpGet("rating")] //api/reviews/{rating}
         public async Task<ActionResult<List<Review>>> GetRating(string specificRating, float minRating = 0, float maxRating = 10)
         {
             // check to see if there is a specific rating
