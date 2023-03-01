@@ -281,13 +281,14 @@ namespace API.Controllers
         }
 
         
-        /*[HttpGet("QueryBuilder")]
-        public async Task<ActionResult<List<Movie>>> GetMovieData([FromQuery] string field, [FromQuery] string[] param)
+        [HttpGet("multiqueryByField")]
+        /// <param name="field">Must match the capitalization and spelling of the elasticsearch field, not the model's attribute</param>
+
+        public async Task<ActionResult<List<Movie>>> GetMovieData([FromQuery] string field, [FromQuery] string[] searchTerms)
         {
-            var query = QueryBuilder.Blah(field, param);
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => query));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => basicMultiStringMatch.ShouldMatchRequest(field, searchTerms)));
             return response.Documents.ToList();
-        }*/
+        }
         
 
         // TODO: cant use arrays with this algorithm. is it necessary?
