@@ -1,3 +1,4 @@
+using API.services;
 using Microsoft.AspNetCore.Mvc;
 using Nest;
 using System;
@@ -276,82 +277,37 @@ namespace API.Controllers
             }
         }
 
-        //------------------------------------------------------------------/
-        // return review based on its usefulness score
-        // only returns the first 10 matches
-        [HttpGet("usefulnessVotes")] //api/reviews/Usefulness/{useVotes}
-        public async Task<ActionResult<List<Review>>> GetByUsefulness(string useVotes)
+
+        /// <summary>
+        ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
+        /// </summary>
+        /// <param name="field">The field within a review to search on.</param>
+        /// <param name="specificNum">The exact number to match on the field</param>
+        /// <param name="minNum">The lower bound on the field (inclusive)</param>
+        /// <param name="maxNum">The higher bound on the field (inclusive)</param>
+        /// <returns></returns>
+        [HttpGet("minmaxByField")] //api/reviews/minmaxByField
+        public async Task<ActionResult<List<Review>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum) 
         {
-            var response = await _elasticClient.SearchAsync<Review>(s => s
-                .Index(reviewIndex) // index name
-                .Query(q => q.Term(r => r.UsefulnessVote, useVotes) || q.Match(m => m.Field(f => f.UsefulnessVote).Query(useVotes))));
-            // term allows finding docs matching an exact query
-            // match allows for the user to enter in some text that text to match any part of the content in the document
+            if (field.ToLower() == "usefulnessvote" | field.ToLower() == "usefulnessvotes") { field = "Usefulness Vote"; }
+            else if (field.ToLower() == "totalvotes" | field.ToLower() == "totalvote") { field = "Total Votes"; }
+            else if (field.ToLower() == "userrating") { field = "User's Rating out of 10"; }
 
-            return response.Documents.ToList();
-        }
-
-        //------------------------------------------------------------------/
-        // return review based on its usefulness score
-        // only returns the first 10 matches
-        [HttpGet("totalVotes")] //api/reviews/TotalVotes/{totalVotes}
-        public async Task<ActionResult<List<Review>>> GetByVotes(string totalVotes)
-        {
-            var response = await _elasticClient.SearchAsync<Review>(s => s
-                .Index(reviewIndex) // index name
-                .Query(q => q.Term(r => r.TotalVotes, totalVotes) || q.Match(m => m.Field(f => f.TotalVotes).Query(totalVotes))));
-            // term allows finding docs matching an exact query
-            // match allows for the user to enter in some text that text to match any part of the content in the document
-
-            return response.Documents.ToList();
-        }
-
-        //------------------------------------------------------------------/
-        // return review based on its usefulness score (min max included)
-        // only returns the first 10 matches
-        [HttpGet("usefulnessMinMax")] //api/reviews/usefulnessMinMax
-        public async Task<ActionResult<List<Review>>> GetByUsefulnessMinMax(string specificVotes, float minVotes = 0, float maxVotes = 10000000000)
-        {
-            // check to see if there is a specific rating
-            if (!string.IsNullOrEmpty(specificVotes))
+            Review reviewOBJ = new Review();
+            if (!string.IsNullOrEmpty(specificNum))
             {
-                // will return search request
-                var response = _elasticClient.Search<Review>(s => s
-                // sort by relevancy score
-                .Sort(ss => ss
-                    .Descending(SortSpecialField.Score)
-                )
-                .Index(reviewIndex) // index name
-                .Query(q => q.Term(r => r.UsefulnessVote, specificVotes) || q.Match(m => m.Field(f => f.UsefulnessVote).Query(specificVotes))));
-                // term allows finding docs matching an exact query
-                // match allows for the user to enter in some text and that text to match any part of the content in the document
+                
+                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiQueryMatch.MatchRequest(field, reviewOBJ, specificNum)));
                 return response.Documents.ToList();
-
             }
-
-            // for range of ratings
-            // TODO: get this working
             else
             {
-                if (minVotes > maxVotes)
+                if (minNum > maxNum)
                 {
                     return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
                 }
 
-                // return search request
-                var response = _elasticClient.Search<Review>(s => s
-                // sort by relevancy score
-                .Sort(ss => ss
-                    .Descending(SortSpecialField.Score)
-                )
-                    .Index(reviewIndex)
-                        .Query(q => q
-                            .Range(r => r
-                                .Field(f => f.UsefulnessVote)
-                                .GreaterThanOrEquals(minVotes)
-                                    .LessThanOrEquals(maxVotes))
-                            )
-                        );
+                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => minMaxService.RangeRequest(field, reviewOBJ, minNum, maxNum)));
                 return response.Documents.ToList();
             }
         }

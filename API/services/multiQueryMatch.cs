@@ -1,9 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
 using Nest;
 
-namespace API.Controllers
+namespace API.services
 {
-    public class basicMultiStringMatch
+    public class multiQueryMatch
     {
         private static QueryContainer[] MatchListBuilder(string field, string[] searchTerms)
         {
@@ -17,9 +17,10 @@ namespace API.Controllers
             return queryContainerList.ToArray();
         }
 
-        public static QueryContainer ShouldMatchRequest(string field, params string[] searchTerms)
+        public static QueryContainer MatchRequest<T>(string field, T typeOBJ, params string[] searchTerms) where T : class
         {
-            var q = new QueryContainerDescriptor<Movie>().Bool(
+            // to know what model to use, we need to be passed a class object of that model. Might be a better way?
+            var q = new QueryContainerDescriptor<T>().Bool(
                 b => b.Should(
                     MatchListBuilder(field, searchTerms)));
             return q;
