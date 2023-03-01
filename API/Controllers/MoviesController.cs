@@ -23,7 +23,7 @@ namespace API.Controllers
 
         }
 
-        [HttpGet("get10")] //api/movies
+        [HttpGet("")] //api/movies
         public async Task<ActionResult<List<Movie>>> GetMovies()
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s
@@ -34,7 +34,8 @@ namespace API.Controllers
             return response.Documents.ToList();
         }
 
-        [HttpGet("getall")] //api/movies
+        //TODO: Pagination
+        /*[HttpGet("all")] //api/movies
         public async Task<List<Movie>> GetAllMovies()
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s
@@ -51,6 +52,7 @@ namespace API.Controllers
 
             return responseList;
         }
+        */
 
         //------------------------------------------------------------------/
         // Search for movies by rating 
@@ -60,7 +62,7 @@ namespace API.Controllers
         // regex for floating numbers 0 - 10
         private readonly Regex ratingRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
 
-        [HttpGet("rating/")] //api/movies/rating/{rating}
+        [HttpGet("{rating}")] //api/movies/{rating}
         public async Task<ActionResult<List<Movie>>> GetRating(string specificRating, float minRating = 0, float maxRating = 10)
         {
             // check to see if there is a specific rating
@@ -127,7 +129,7 @@ namespace API.Controllers
         //send post-processed tokens to search function
         //return the search results
 
-        [HttpGet("title/")] //api/movies/title/{m_title}
+        [HttpGet("{title}")] //api/movies/{title}
         public async Task<ActionResult<List<Movie>>> GetMoviesByTitle(string m_title = "")
         {
             //pre-processing
@@ -184,7 +186,7 @@ namespace API.Controllers
         // return movie based on its movie id
         // only returns the first 10 matches, but should only have 1 result anyway
 
-        [HttpGet("GetByID")] //api/movies/GetByID/{movieID}
+        [HttpGet("{movieID}")] //api/movies/{movieID}
         public async Task<ActionResult<List<Movie>>> GetByID(string movieID)
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s
@@ -196,7 +198,7 @@ namespace API.Controllers
             return response.Documents.ToList();
         }
 
-        [HttpPost("add")]
+        [HttpPost("")]
         public async Task<string> Post(Movie value)
         {
             // TODO: create an autoincrementing function for movieID and ensure no two movies have the same ID
@@ -238,7 +240,7 @@ namespace API.Controllers
             return returnString;
         }
 
-        [HttpDelete("del/{elasticId}")]
+        [HttpDelete("{elasticId}")]
         // delete based on id (http://localhost:9200/movies/_search) -> find id
         public async void Delete(string elasticId)
         {
@@ -247,7 +249,7 @@ namespace API.Controllers
 
         }
 
-        [HttpPut("edit/{elasticId}")]
+        [HttpPut("{elasticId}")]
         public async Task<string> Put(string elasticId, Movie value)
         {
             // TODO: create an autoincrementing function for movieID and ensure no two movies have the same ID
@@ -278,6 +280,15 @@ namespace API.Controllers
             return response.Id;
         }
 
+        /*
+        [HttpGet("QueryBuilder")]
+        public async Task<ActionResult<List<Movie>>> GetMovieData([FromQuery] string field, [FromQuery] string[] param)
+        {
+            var query = QueryBuilder.Blah(field, param);
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => query));
+            return response.Documents.ToList();
+        }
+        */
 
         // TODO: cant use arrays with this algorithm. is it necessary?
         /*[HttpPut("edit/{elasticId}")]

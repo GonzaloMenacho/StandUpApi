@@ -27,7 +27,7 @@ namespace API.Controllers
         //------------------------------------------------------------------/
         // Returns first 10 reviews
 
-        [HttpGet("get10")] //api/reviews
+        [HttpGet("")] //api/reviews
         public async Task<ActionResult<List<Review>>> GetReviews()
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -45,7 +45,7 @@ namespace API.Controllers
         // Should not call until pagination is implemented.
         // Included just in case but dude. theres ~50k reviews
 
-        [HttpGet("getall (DO NOT CALL)")] //api/reviews   
+        /*[HttpGet("getall (DO NOT CALL)")] //api/reviews   
         public async Task<List<Review>> GetAllReviews()
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -61,13 +61,13 @@ namespace API.Controllers
             }
 
             return responseList;
-        }
+        }*/
 
 
         //------------------------------------------------------------------/
         // Search for reviews by username
 
-        [HttpGet("GetByUser")] //api/movies/GetByUser
+        [HttpGet("{username}")] //api/movies/
         public async Task<ActionResult<List<Review>>> Get(string username)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -87,7 +87,7 @@ namespace API.Controllers
         //send post-processed tokens to search function
         //return the search results
 
-        [HttpGet("GetByBody")] //api/reviews/GetByBody/{m_text}
+        [HttpGet("keywords")] //api/reviews/keywords
         public async Task<ActionResult<List<Review>>> GetReviewsByText(string m_text = "", bool searchOnTitle = true)
         {
             //pre-processing
@@ -172,7 +172,7 @@ namespace API.Controllers
         // return review based on the movie its reviewing
         // only returns the first 10 matches
 
-        [HttpGet("GetByID")] //api/reviews/GetByID/{movieID}
+        [HttpGet("{movieID}")] //api/reviews/{movieID}
         public async Task<ActionResult<List<Review>>> GetByID(string movieID)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -189,7 +189,7 @@ namespace API.Controllers
         // returns ALL results. Big load, will be slow
         // TODO: implement pagination
 
-        [HttpGet("GetAllByID")] //api/reviews/GetByID/{movieID}
+        /*[HttpGet("GetAllByID")] //api/reviews/GetByID/{movieID}
         public async Task<ActionResult<List<Review>>> GetAllByID(string movieID)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -207,7 +207,7 @@ namespace API.Controllers
             }
 
             return responseList;            // long response time. TODO: implement pagination??? do something to chunk out the responses.
-        }
+        }*/
 
         //------------------------------------------------------------------/
         // Search for reviews by rating 
@@ -219,7 +219,7 @@ namespace API.Controllers
         // regex for floating numbers 0 - 10
         private readonly Regex floatRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
 
-        [HttpGet("rating/")] //api/reviews/rating/{rating}
+        [HttpGet("{rating}")] //api/reviews/{rating}
         public async Task<ActionResult<List<Review>>> GetRating(string specificRating, float minRating = 0, float maxRating = 10)
         {
             // check to see if there is a specific rating
@@ -279,7 +279,7 @@ namespace API.Controllers
         //------------------------------------------------------------------/
         // return review based on its usefulness score
         // only returns the first 10 matches
-        [HttpGet("GetByUsefulness")] //api/reviews/GetByID/{movieID}
+        [HttpGet("usefulnessVotes")] //api/reviews/Usefulness/{useVotes}
         public async Task<ActionResult<List<Review>>> GetByUsefulness(string useVotes)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -294,7 +294,7 @@ namespace API.Controllers
         //------------------------------------------------------------------/
         // return review based on its usefulness score
         // only returns the first 10 matches
-        [HttpGet("GetByTotalVotes")] //api/reviews/GetByID/{movieID}
+        [HttpGet("totalVotes")] //api/reviews/TotalVotes/{totalVotes}
         public async Task<ActionResult<List<Review>>> GetByVotes(string totalVotes)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -309,7 +309,7 @@ namespace API.Controllers
         //------------------------------------------------------------------/
         // return review based on its usefulness score (min max included)
         // only returns the first 10 matches
-        [HttpGet("GetByUsefulnessMinMax")] //api/reviews/GetByUsefulnessMinMax
+        [HttpGet("usefulnessMinMax")] //api/reviews/usefulnessMinMax
         public async Task<ActionResult<List<Review>>> GetByUsefulnessMinMax(string specificVotes, float minVotes = 0, float maxVotes = 10000000000)
         {
             // check to see if there is a specific rating
