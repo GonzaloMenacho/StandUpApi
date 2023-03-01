@@ -1,3 +1,4 @@
+using API.services;
 using Microsoft.AspNetCore.Mvc;
 using Nest;
 using System;
@@ -129,7 +130,7 @@ namespace API.Controllers
         //send post-processed tokens to search function
         //return the search results
 
-        [HttpGet("title")] //api/movies/{title}
+        [HttpGet("title")] //api/movies/title
         public async Task<ActionResult<List<Movie>>> GetMoviesByTitle(string m_title = "")
         {
             //pre-processing
@@ -280,15 +281,21 @@ namespace API.Controllers
             return response.Id;
         }
 
-        
-        [HttpGet("multiqueryByField")]
-        /// <param name="field">Must match the capitalization and spelling of the elasticsearch field, not the model's attribute</param>
 
+        /// <summary>
+        /// Can search for an exact match of field to search terms. If you don't type out and match a field in its entirety, it will not match. 
+        /// </summary>
+        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
+        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
+        /// <returns></returns>
+        [HttpGet("multiqueryByField")]
         public async Task<ActionResult<List<Movie>>> GetMovieData([FromQuery] string field, [FromQuery] string[] searchTerms)
         {
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => basicMultiStringMatch.ShouldMatchRequest(field, searchTerms)));
+            Movie movieOBJ = new Movie();
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(field, movieOBJ, searchTerms)));
             return response.Documents.ToList();
         }
+        
         
 
         // TODO: cant use arrays with this algorithm. is it necessary?
