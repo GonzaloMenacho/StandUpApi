@@ -283,7 +283,7 @@ namespace API.Controllers
 
 
         /// <summary>
-        /// Can search for an exact match of field to search terms. If you don't type out and match a field in its entirety, it will not match. 
+        /// Can search for an exact match of field to search terms. For some reason on "title", if you don't type out and match the title in its entirety, it will not match. 
         /// </summary>
         /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
@@ -295,8 +295,36 @@ namespace API.Controllers
             var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(field, movieOBJ, searchTerms)));
             return response.Documents.ToList();
         }
-        
-        
+
+        /// <summary>
+        ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
+        /// </summary>
+        /// <param name="field">The field within a review to search on.</param>
+        /// <param name="specificNum">The exact number to match on the field</param>
+        /// <param name="minNum">The lower bound on the field (inclusive)</param>
+        /// <param name="maxNum">The higher bound on the field (inclusive)</param>
+        /// <returns></returns>
+        [HttpGet("minmaxByField")] //api/reviews/minmaxByField
+        public async Task<ActionResult<List<Movie>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
+        {
+            Movie movieOBJ = new Movie();
+            if (!string.IsNullOrEmpty(specificNum))
+            {
+
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(field, movieOBJ, specificNum)));
+                return response.Documents.ToList();
+            }
+            else
+            {
+                if (minNum > maxNum)
+                {
+                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
+                }
+
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(field, movieOBJ, minNum, maxNum)));
+                return response.Documents.ToList();
+            }
+        }
 
         // TODO: cant use arrays with this algorithm. is it necessary?
         /*[HttpPut("edit/{elasticId}")]
