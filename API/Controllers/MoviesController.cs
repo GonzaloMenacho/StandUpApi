@@ -282,8 +282,10 @@ namespace API.Controllers
         }
 
 
+        //For some reason on "title", if you don't type out and match the title in its entirety, it will not match. Model doesnt break on spaces?
+        //TODO: Solution found. Title is set to keyword in elastic. Need to re-ingest and set it to text in advanced settings
         /// <summary>
-        /// Can search for an exact match of field to search terms. For some reason on "title", if you don't type out and match the title in its entirety, it will not match. 
+        /// Can search for an exact match of field to search terms. 
         /// </summary>
         /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
