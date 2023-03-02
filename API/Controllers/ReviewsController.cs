@@ -277,6 +277,20 @@ namespace API.Controllers
             }
         }
 
+        /// <summary>
+        /// Can search for an exact match of field to search terms.
+        /// </summary>
+        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
+        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
+        /// <returns></returns>
+        [HttpGet("multiqueryByField")]
+        public async Task<ActionResult<List<Review>>> GetMovieData([FromQuery] string field, [FromQuery] string[] searchTerms)
+        {
+            Review reviewOBJ = new Review();
+            var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiQueryMatch.MatchRequest(field, reviewOBJ, searchTerms)));
+            return response.Documents.ToList();
+        }
+
 
         /// <summary>
         ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
