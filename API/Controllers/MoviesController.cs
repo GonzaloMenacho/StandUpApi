@@ -128,6 +128,7 @@ namespace API.Controllers
         //return the search results
 
         [HttpGet("title/")] //api/movies/title/{m_title}
+        //public async Task<ActionResult<List<Movie>>> GetMoviesByTitle([FromQuery] string m_title = "")
         public async Task<ActionResult<List<Movie>>> GetMoviesByTitle(string m_title = "")
         {
             //pre-processing
