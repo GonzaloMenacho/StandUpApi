@@ -68,7 +68,7 @@ namespace API.Controllers
         //------------------------------------------------------------------/
         // Search for reviews by username
 
-        [HttpGet("{username}")] //api/movies/
+        [HttpGet("u={username}")] //api/movies/
         public async Task<ActionResult<List<Review>>> Get(string username)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
@@ -173,7 +173,7 @@ namespace API.Controllers
         // return review based on the movie its reviewing
         // only returns the first 10 matches
 
-        [HttpGet("{movieID}")] //api/reviews/{movieID}
+        [HttpGet("id={movieID}")] //api/reviews/{movieID}
         public async Task<ActionResult<List<Review>>> GetByID(string movieID)
         {
             var response = await _elasticClient.SearchAsync<Review>(s => s
