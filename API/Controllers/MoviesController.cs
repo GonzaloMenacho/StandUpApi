@@ -2,6 +2,7 @@ using API.services;
 using Microsoft.AspNetCore.Mvc;
 using Nest;
 using System;
+using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -16,30 +17,26 @@ namespace API.Controllers
 
         private readonly string movieIndex = "movies";
         private readonly IElasticClient _elasticClient;
-        private enum ClassAttributes
-        {
-            MovieID,
-            Title,
-            MovieIMDbRating,
-            TotalRatingCount, 
-            TotalUserReviews,
-            TotalCriticReviews,
-            MetaScore,
-            MovieGenres,
-            Directors,
-            DatePublished,
-            Timestamp,
-            Creators,
-            MainStars,
-            Description, 
-            MovieTrailer,
-            MoviePoster
-        }
 
-        private enum ElasticFields
-        {
-            // same order as above, but use elastic names
-        }
+        // dictionary for fields. key is class attribute (lowercase), value is elastic field name
+        private Dictionary<string, string> MovieFields = new Dictionary<string, string>(){
+            {"movieid", "movieID"},
+            {"title", "title"},
+            {"movieimdbrating", "movieIMDbRating" },
+            {"totalratingcount", "totalRatingCount"},
+            {"totaluserreviews", "totalUserReviews" },
+            {"totalcriticreviews", "totalCriticReviews" },
+            {"metascore", "metaScore" },
+            {"moviegenres", "movieGenres" },
+            {"directors", "directors" },
+            {"datepublished", "datePublished" },
+            {"timestamp", "@timestamp" },
+            {"creators", "creators" },
+            {"maindtars", "mainStars" },
+            {"duration", "duration" },
+            {"movietrailer", "movieTrailer" },
+            {"moviesposter", "moviePoster" }
+        };
 
         // create elasticClient field thru injection
         public MoviesController(IElasticClient elasticClient)
@@ -153,8 +150,15 @@ namespace API.Controllers
         [HttpGet("multiqueryByField")]
         public async Task<ActionResult<List<Movie>>> GetMovieData([FromQuery] string field, [FromQuery] string[] searchTerms)
         {
+            string eField = "title"; // default
+            try
+            {
+                eField = MovieFields[field.ToLower().Trim()];
+            }
+            catch (Exception e){}
+
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(field, movieOBJ, searchTerms)));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, searchTerms)));
             return response.Documents.ToList();
         }
 
@@ -169,11 +173,18 @@ namespace API.Controllers
         [HttpGet("minmaxByField")] //api/reviews/minmaxByField
         public async Task<ActionResult<List<Movie>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
+            string eField = "title"; // default
+            try
+            {
+                eField = MovieFields[field.ToLower().Trim()];
+            }
+            catch (Exception e) { }
+
             Movie movieOBJ = new Movie();
             if (!string.IsNullOrEmpty(specificNum))
             {
 
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(field, movieOBJ, specificNum)));
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, specificNum)));
                 return response.Documents.ToList();
             }
             else
@@ -183,7 +194,7 @@ namespace API.Controllers
                     return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
                 }
 
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(field, movieOBJ, minNum, maxNum)));
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(eField, movieOBJ, minNum, maxNum)));
                 return response.Documents.ToList();
             }
         }
