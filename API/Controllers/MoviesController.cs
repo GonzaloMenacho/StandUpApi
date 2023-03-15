@@ -56,6 +56,85 @@ namespace API.Controllers
             return response.Documents.ToList();
         }
 
+        /// <summary>
+        /// Can search for an exact match of field to search terms. Matches on by characters using regex. Monk matches monkey.
+        /// </summary>
+        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
+        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
+        /// <returns></returns>
+        [HttpGet("multiqueryByChar")]
+        public async Task<ActionResult<List<Movie>>> GetMovieDataByChar([FromQuery] string field, [FromQuery] string[] searchTerms)
+        {
+            string eField = "title"; // default
+            try
+            {
+                eField = MovieFields[field.ToLower().Trim()];
+            }
+            catch (Exception e) { }
+
+            Movie movieOBJ = new Movie();
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => searchByCharRaw.MatchRequest(eField, movieOBJ, searchTerms)));
+            return response.Documents.ToList();
+        }
+
+        /// <summary>
+        /// Can search for an exact match of field to search terms. Matches on a word-by-word basis. Monkey matches monkey, but Monk does not match monkey.
+        /// </summary>
+        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
+        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
+        /// <returns></returns>
+        [HttpGet("multiqueryByToken")]
+        public async Task<ActionResult<List<Movie>>> GetMovieDataByToken([FromQuery] string field, [FromQuery] string[] searchTerms)
+        {
+            string eField = "title"; // default
+            try
+            {
+                eField = MovieFields[field.ToLower().Trim()];
+            }
+            catch (Exception e) { }
+
+            Movie movieOBJ = new Movie();
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, searchTerms)));
+            return response.Documents.ToList();
+        }
+
+        /// <summary>
+        ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
+        /// </summary>
+        /// <param name="field">The field within a review to search on.</param>
+        /// <param name="specificNum">The exact number to match on the field</param>
+        /// <param name="minNum">The lower bound on the field (inclusive)</param>
+        /// <param name="maxNum">The higher bound on the field (inclusive)</param>
+        /// <returns></returns>
+        [HttpGet("minmaxByField")] //api/reviews/minmaxByField
+        public async Task<ActionResult<List<Movie>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
+        {
+            string eField = "metaScore"; // default
+            try
+            {
+                eField = MovieFields[field.ToLower().Trim()];
+            }
+            catch (Exception e) { }
+
+            Movie movieOBJ = new Movie();
+            if (!string.IsNullOrEmpty(specificNum))
+            {
+
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, specificNum)));
+                return response.Documents.ToList();
+            }
+            else
+            {
+                if (minNum > maxNum)
+                {
+                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
+                }
+
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(eField, movieOBJ, minNum, maxNum)));
+                return response.Documents.ToList();
+            }
+        }
+
         [HttpPost("")]
         public async Task<string> Post(Movie value)
         {
@@ -138,127 +217,5 @@ namespace API.Controllers
             return response.Id;
         }
 
-        //------------------------------------------------------------------/
-        // Search for movies by titles
-
-        // Keeping this route because currently, ngram tokenizer isnt enabled. therefore, searches on 'ave' wont return 'avengers'.
-        //split the title string into a list of tokens
-        //use regex to process the tokens according to restrictions
-        //send post-processed tokens to search function
-        //return the search results
-
-        [HttpGet("title")] //api/movies/title
-        public async Task<ActionResult<List<Movie>>> GetMoviesByTitle(string m_title = "")
-        {
-            //pre-processing
-            m_title = Regex.Replace(m_title, @"[^\w- ]|_", " ");   //replace illegal chars and underscores with a space
-            m_title = m_title.Trim();   // trim leading and ending whitespaces
-
-            // replacing each character in the string with regex that ignores capitalization.
-            // i.e. "a" and "A" become "[Aa]"
-            string fixed_title = "";
-            foreach (char c in m_title)
-            {
-                if (c >= 'a' && c <= 'z')
-                {
-                    fixed_title += $"[{(char)(c - 32)}{c}]";
-                }
-                else if (c >= 'A' && c <= 'Z')
-                {
-                    fixed_title += $"[{c}{(char)(c + 32)}]";
-                }
-                else
-                {
-                    fixed_title += $"[{c}]?";   // if " ", "-", or other special character, make it zero or 1
-                }
-            }
-            //Console.WriteLine(fixed_title + "end");
-
-            // regex to grab every string with the fixed_title as the substring
-            m_title = $".*{fixed_title}.*";
-
-
-            //searching
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
-            // this should sort by relevancy score, but testing with optional characters in the above
-            // regex creation doesn't show it working. needs to be looked into.
-                .Sort(ss => ss
-                    .Descending(SortSpecialField.Score)
-                )
-            //query the given movie index
-                .Index(movieIndex)
-                .Query(q => q
-                    .Regexp(c => c
-                        .Name(m_title)          // naming the search (not important!)
-                        .Field(p => p.Title)    // the field we're querying
-                        .Value(m_title)         // the query value
-                        .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
-                    )
-                )
-            );
-
-            return response.Documents.ToList();
-        }
-
-
-        //For some reason on "title", if you don't type out and match the title in its entirety, it will not match. Model doesnt break on spaces?
-        //TODO: Solution found. Title is set to keyword in elastic. Need to re-ingest and set it to text in advanced settings
-        /// <summary>
-        /// Can search for an exact match of field to search terms. 
-        /// </summary>
-        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
-        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
-        /// <returns></returns>
-        [HttpGet("multiqueryByField")]
-        public async Task<ActionResult<List<Movie>>> GetMovieData([FromQuery] string field, [FromQuery] string[] searchTerms)
-        {
-            string eField = "title"; // default
-            try
-            {
-                eField = MovieFields[field.ToLower().Trim()];
-            }
-            catch (Exception e){}
-
-            Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, searchTerms)));
-            return response.Documents.ToList();
-        }
-
-        /// <summary>
-        ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
-        /// </summary>
-        /// <param name="field">The field within a review to search on.</param>
-        /// <param name="specificNum">The exact number to match on the field</param>
-        /// <param name="minNum">The lower bound on the field (inclusive)</param>
-        /// <param name="maxNum">The higher bound on the field (inclusive)</param>
-        /// <returns></returns>
-        [HttpGet("minmaxByField")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Movie>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
-        {
-            string eField = "metaScore"; // default
-            try
-            {
-                eField = MovieFields[field.ToLower().Trim()];
-            }
-            catch (Exception e) { }
-
-            Movie movieOBJ = new Movie();
-            if (!string.IsNullOrEmpty(specificNum))
-            {
-
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, specificNum)));
-                return response.Documents.ToList();
-            }
-            else
-            {
-                if (minNum > maxNum)
-                {
-                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
-                }
-
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(eField, movieOBJ, minNum, maxNum)));
-                return response.Documents.ToList();
-            }
-        }
     }
 }
