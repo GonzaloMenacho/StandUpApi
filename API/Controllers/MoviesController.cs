@@ -73,7 +73,7 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => searchByCharRaw.MatchRequest(eField, movieOBJ, searchTerms)));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => searchByCharRaw.RegexpRequest(eField, movieOBJ, searchTerms)));
             return response.Documents.ToList();
         }
 
