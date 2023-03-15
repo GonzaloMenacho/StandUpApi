@@ -173,7 +173,7 @@ namespace API.Controllers
         [HttpGet("minmaxByField")] //api/reviews/minmaxByField
         public async Task<ActionResult<List<Movie>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
-            string eField = "title"; // default
+            string eField = "metaScore"; // default
             try
             {
                 eField = MovieFields[field.ToLower().Trim()];
