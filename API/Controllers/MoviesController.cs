@@ -2,6 +2,7 @@ using API.services;
 using Microsoft.AspNetCore.Mvc;
 using Nest;
 using System;
+using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -17,6 +18,26 @@ namespace API.Controllers
         private readonly string movieIndex = "movies";
         private readonly IElasticClient _elasticClient;
 
+        // dictionary for fields. key is class attribute (lowercase), value is elastic field name
+        private Dictionary<string, string> MovieFields = new Dictionary<string, string>(){
+            {"movieid", "movieID"},
+            {"title", "title"},
+            {"movieimdbrating", "movieIMDbRating" },
+            {"totalratingcount", "totalRatingCount"},
+            {"totaluserreviews", "totalUserReviews" },
+            {"totalcriticreviews", "totalCriticReviews" },
+            {"metascore", "metaScore" },
+            {"moviegenres", "movieGenres" },
+            {"directors", "directors" },
+            {"datepublished", "datePublished" },
+            {"timestamp", "@timestamp" },
+            {"creators", "creators" },
+            {"maindtars", "mainStars" },
+            {"duration", "duration" },
+            {"movietrailer", "movieTrailer" },
+            {"moviesposter", "moviePoster" }
+        };
+
         // create elasticClient field thru injection
         public MoviesController(IElasticClient elasticClient)
         {
@@ -31,170 +52,6 @@ namespace API.Controllers
                 .Index(movieIndex)
                 .Query(q => q.MatchAll()));
             // returns all movies (actually defaults to first 10)
-
-            return response.Documents.ToList();
-        }
-
-        //TODO: Pagination
-        /*[HttpGet("all")] //api/movies
-        public async Task<List<Movie>> GetAllMovies()
-        {
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
-                .Index(movieIndex)
-                .Query(q => q).Scroll("10s"));
-            // scrolls through the docs for 10 seconds)
-            List<Movie> responseList = new List<Movie>();
-
-            while (response.Documents.Any())       // keep scrolling until there are no documents
-            {
-                responseList.AddRange(response.Documents.ToList());
-                response = _elasticClient.Scroll<Movie>("10s", response.ScrollId);
-            }
-
-            return responseList;
-        }
-        */
-
-        //------------------------------------------------------------------/
-        // Search for movies by rating 
-        // either with a specific rating param
-        // or a range rating
-
-        // regex for floating numbers 0 - 10
-        private readonly Regex ratingRegex = new Regex(@"^(10(\.0+)?|[0-9](\.[0-9]+)?|\.[0-9]+)$");
-
-        [HttpGet("rating")] //api/movies/rating
-        public async Task<ActionResult<List<Movie>>> GetRating(string specificRating, float minRating = 0, float maxRating = 10)
-        {
-            // check to see if there is a specific rating
-            if (!string.IsNullOrEmpty(specificRating))
-            {
-                // check if input is a floating number 0 - 10
-                if (!float.TryParse(specificRating, out float ratingValue) || !ratingRegex.IsMatch(specificRating))
-                {
-                    return BadRequest("The 'rating' parameter must be a number between 0 & 10.");
-                }
-                // will return search request
-                var response = await _elasticClient.SearchAsync<Movie>(s => s
-                // sort by relevancy score
-                .Sort(ss => ss
-                    .Descending(SortSpecialField.Score)
-                )
-                .Index(movieIndex) // index name
-                .Query(q => q.Term(r => r.MovieIMDbRating, specificRating) || q.Match(m => m.Field(f => f.MovieIMDbRating).Query(specificRating))));
-                // term allows finding docs matching an exact query
-                // match allows for the user to enter in some text and that text to match any part of the content in the document
-                return response.Documents.ToList();
-
-            }
-
-            // for range of ratings
-            else
-            {
-                if (minRating > maxRating)
-                {
-                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
-                }
-
-                // regex check
-                else if (!ratingRegex.IsMatch(minRating.ToString()) || !ratingRegex.IsMatch(maxRating.ToString()))
-                {
-                    return BadRequest("The 'minRating' and 'maxRating' must between 0 and 10");
-                }
-
-                // return search request
-                var response = _elasticClient.Search<Movie>(s => s
-                // sort by relevancy score
-                .Sort(ss => ss
-                    .Descending(SortSpecialField.Score)
-                )
-                    .Index(movieIndex)
-                        .Query(q => q
-                            .Range(r => r
-                                .Field(f => f.MovieIMDbRating)
-                                .GreaterThanOrEquals(minRating)
-                                    .LessThanOrEquals(maxRating))
-                            )
-                        );
-                return response.Documents.ToList();
-            }
-
-        }
-
-
-        //------------------------------------------------------------------/
-        // Search for movies by titles
-
-        //split the title string into a list of tokens
-        //use regex to process the tokens according to restrictions
-        //send post-processed tokens to search function
-        //return the search results
-
-        [HttpGet("title")] //api/movies/title
-        public async Task<ActionResult<List<Movie>>> GetMoviesByTitle(string m_title = "")
-        {
-            //pre-processing
-            m_title = Regex.Replace(m_title, @"[^\w- ]|_", " ");   //replace illegal chars and underscores with a space
-            m_title = m_title.Trim();   // trim leading and ending whitespaces
-
-            // replacing each character in the string with regex that ignores capitalization.
-            // i.e. "a" and "A" become "[Aa]"
-            string fixed_title = "";
-            foreach (char c in m_title)
-            {
-                if (c >= 'a' && c <= 'z')
-                {
-                    fixed_title += $"[{(char)(c - 32)}{c}]";
-                }
-                else if (c >= 'A' && c <= 'Z')
-                {
-                    fixed_title += $"[{c}{(char)(c + 32)}]";
-                }
-                else
-                {
-                    fixed_title += $"[{c}]?";   // if " ", "-", or other special character, make it zero or 1
-                }
-            }
-            //Console.WriteLine(fixed_title + "end");
-
-            // regex to grab every string with the fixed_title as the substring
-            m_title = $".*{fixed_title}.*";
-
-
-            //searching
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
-            // this should sort by relevancy score, but testing with optional characters in the above
-            // regex creation doesn't show it working. needs to be looked into.
-                .Sort(ss => ss
-                    .Descending(SortSpecialField.Score)
-                )
-            //query the given movie index
-                .Index(movieIndex)
-                .Query(q => q
-                    .Regexp(c => c
-                        .Name(m_title)          // naming the search (not important!)
-                        .Field(p => p.Title)    // the field we're querying
-                        .Value(m_title)         // the query value
-                        .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
-                    )
-                )
-            );
-
-            return response.Documents.ToList();
-        }
-
-        //------------------------------------------------------------------/
-        // return movie based on its movie id
-        // only returns the first 10 matches, but should only have 1 result anyway
-
-        [HttpGet("{movieID}")] //api/movies/{movieID}
-        public async Task<ActionResult<List<Movie>>> GetByID(string movieID)
-        {
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
-                .Index(movieIndex) // index name
-                .Query(q => q.Term(m => m.MovieID, movieID) || q.Match(m => m.Field(f => f.MovieID).Query(movieID))));
-            // term allows finding docs matching an exact query
-            // match allows for the user to enter in some text that text to match any part of the content in the document
 
             return response.Documents.ToList();
         }
@@ -281,6 +138,68 @@ namespace API.Controllers
             return response.Id;
         }
 
+        //------------------------------------------------------------------/
+        // Search for movies by titles
+
+        // Keeping this route because currently, ngram tokenizer isnt enabled. therefore, searches on 'ave' wont return 'avengers'.
+        //split the title string into a list of tokens
+        //use regex to process the tokens according to restrictions
+        //send post-processed tokens to search function
+        //return the search results
+
+        [HttpGet("title")] //api/movies/title
+        public async Task<ActionResult<List<Movie>>> GetMoviesByTitle(string m_title = "")
+        {
+            //pre-processing
+            m_title = Regex.Replace(m_title, @"[^\w- ]|_", " ");   //replace illegal chars and underscores with a space
+            m_title = m_title.Trim();   // trim leading and ending whitespaces
+
+            // replacing each character in the string with regex that ignores capitalization.
+            // i.e. "a" and "A" become "[Aa]"
+            string fixed_title = "";
+            foreach (char c in m_title)
+            {
+                if (c >= 'a' && c <= 'z')
+                {
+                    fixed_title += $"[{(char)(c - 32)}{c}]";
+                }
+                else if (c >= 'A' && c <= 'Z')
+                {
+                    fixed_title += $"[{c}{(char)(c + 32)}]";
+                }
+                else
+                {
+                    fixed_title += $"[{c}]?";   // if " ", "-", or other special character, make it zero or 1
+                }
+            }
+            //Console.WriteLine(fixed_title + "end");
+
+            // regex to grab every string with the fixed_title as the substring
+            m_title = $".*{fixed_title}.*";
+
+
+            //searching
+            var response = await _elasticClient.SearchAsync<Movie>(s => s
+            // this should sort by relevancy score, but testing with optional characters in the above
+            // regex creation doesn't show it working. needs to be looked into.
+                .Sort(ss => ss
+                    .Descending(SortSpecialField.Score)
+                )
+            //query the given movie index
+                .Index(movieIndex)
+                .Query(q => q
+                    .Regexp(c => c
+                        .Name(m_title)          // naming the search (not important!)
+                        .Field(p => p.Title)    // the field we're querying
+                        .Value(m_title)         // the query value
+                        .Rewrite(MultiTermQueryRewrite.TopTerms(5)) //this limits the search to the top 5 items
+                    )
+                )
+            );
+
+            return response.Documents.ToList();
+        }
+
 
         //For some reason on "title", if you don't type out and match the title in its entirety, it will not match. Model doesnt break on spaces?
         //TODO: Solution found. Title is set to keyword in elastic. Need to re-ingest and set it to text in advanced settings
@@ -293,8 +212,15 @@ namespace API.Controllers
         [HttpGet("multiqueryByField")]
         public async Task<ActionResult<List<Movie>>> GetMovieData([FromQuery] string field, [FromQuery] string[] searchTerms)
         {
+            string eField = "title"; // default
+            try
+            {
+                eField = MovieFields[field.ToLower().Trim()];
+            }
+            catch (Exception e){}
+
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(field, movieOBJ, searchTerms)));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, searchTerms)));
             return response.Documents.ToList();
         }
 
@@ -309,11 +235,18 @@ namespace API.Controllers
         [HttpGet("minmaxByField")] //api/reviews/minmaxByField
         public async Task<ActionResult<List<Movie>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
+            string eField = "metaScore"; // default
+            try
+            {
+                eField = MovieFields[field.ToLower().Trim()];
+            }
+            catch (Exception e) { }
+
             Movie movieOBJ = new Movie();
             if (!string.IsNullOrEmpty(specificNum))
             {
 
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(field, movieOBJ, specificNum)));
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, specificNum)));
                 return response.Documents.ToList();
             }
             else
@@ -323,55 +256,9 @@ namespace API.Controllers
                     return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
                 }
 
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(field, movieOBJ, minNum, maxNum)));
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(eField, movieOBJ, minNum, maxNum)));
                 return response.Documents.ToList();
             }
         }
-
-        // TODO: cant use arrays with this algorithm. is it necessary?
-        /*[HttpPut("edit/{elasticId}")]
-        public async Task<Movie> Put(string elasticId, 
-            int movieID, 
-            string title, 
-            float userrating, 
-            double totalratingcount, 
-            string totaluserreviews, 
-            int totalcriticreviews, 
-            int criticrating, 
-            //string[] genres, 
-            //string[] directors, 
-            DateTime datepublished, 
-            DateTime timestamp, 
-            //string[] creators, 
-            //string[] mainstars, 
-            string description, 
-            int duration, 
-            string movietrailer, 
-            string movieposter)
-        {
-            var response = await _elasticClient.UpdateAsync<Movie>(elasticId, u => u
-                .Index(movieIndex)
-                .Doc(new Movie { 
-                    MovieID = movieID, 
-                    Title = title, 
-                    movieIMDbRating = userrating,
-                    TotalRatingCount = totalratingcount,
-                    TotalUserReviews = totaluserreviews,
-                    TotalCriticReviews = totalcriticreviews,
-                    MetaScore = criticrating,
-                    //MovieGenres = genres, 
-                    //Directors = directors, 
-                    DatePublished = datepublished, 
-                    Timestamp = timestamp,
-                    //Creators = creators,
-                    //MainStars = mainstars,
-                    Description = description,
-                    Duration = duration, 
-                    MovieTrailer = movietrailer, 
-                    MoviePoster = movieposter}));
-
-            return null;
-        }
-        */
     }
 }

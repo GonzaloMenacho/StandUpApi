@@ -3,6 +3,7 @@ using Nest;
 
 namespace API.services
 {
+    //TODO: add an nGram tokenizer to have partial word matches (i.e., "ave" should maybe "avengers")
     public class multiQueryMatch
     {
         private static QueryContainer[] MatchListBuilder(string field, string[] searchTerms)
@@ -11,7 +12,7 @@ namespace API.services
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
             foreach (var item in searchTerms)
             {
-                orQuery = new MatchQuery() { Field = field, Query = item };
+                orQuery = new MatchQuery() { Field = field, Query = item};
                 queryContainerList.Add(orQuery);
             }
             return queryContainerList.ToArray();
