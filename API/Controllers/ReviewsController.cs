@@ -110,6 +110,49 @@ namespace API.Controllers
                 return response.Documents.ToList();
             }
         }
+
+        /// <summary>
+        /// For each object, it will add a query on that object's field, searching on the search terms belonging to that object. It will add all queries to one request.
+        /// Each hit will abide by all queries from all objects passed (all search terms on each respective field).
+        /// </summary>
+        /// <param name="fieldTerms">A list of FieldTerms objects. Each object has a string "field" and an array of strings "search terms." </param>
+        /// <returns></returns>
+        [HttpPost("advancedSearchProto")]
+        public async Task<ActionResult<List<Review>>> advancedSearch([FromBody] List<FieldTerms> fieldTerms)
+        {
+            int iter = 0;
+            List<int> badQueries = new List<int>();
+            string eField = "title"; // default
+
+            //FieldTerms test = new FieldTerms();
+            //test.searchTerms = new string[] { "Morbius" };
+            //test.field = "title";
+
+            //fieldTerms.Add(test);
+
+            foreach (var query in fieldTerms)
+            {
+                try
+                {
+                    eField = ReviewFields[query.field.ToLower().Trim()];
+                    query.field = eField;
+                }
+                catch (Exception e)
+                {
+                    badQueries.Add(iter);
+                }
+                iter++;
+            }
+
+            foreach (int index in badQueries)
+            {
+                fieldTerms.RemoveAt(index);
+            }
+
+            Review reviewOBJ = new Review();
+            var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiFieldMatch.MatchRequest(reviewOBJ, fieldTerms)));
+            return response.Documents.ToList();
+        }
     }
 }
 
