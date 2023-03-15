@@ -69,7 +69,7 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Review reviewOBJ = new Review();
-            var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiQueryMatch.MatchRequest(eField, reviewOBJ, searchTerms)));
+            var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => matchService.MatchRequest(eField, reviewOBJ, searchTerms)));
             return response.Documents.ToList();
         }
 
@@ -96,7 +96,7 @@ namespace API.Controllers
             if (!string.IsNullOrEmpty(specificNum))
             {
                 
-                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiQueryMatch.MatchRequest(eField, reviewOBJ, specificNum)));
+                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => matchService.MatchRequest(eField, reviewOBJ, specificNum)));
                 return response.Documents.ToList();
             }
             else

@@ -32,7 +32,8 @@ namespace API.Controllers
             {"datepublished", "datePublished" },
             {"timestamp", "@timestamp" },
             {"creators", "creators" },
-            {"maindtars", "mainStars" },
+            {"mainstars", "mainStars" },
+            {"description", "description"},
             {"duration", "duration" },
             {"movietrailer", "movieTrailer" },
             {"moviesposter", "moviePoster" }
@@ -62,7 +63,7 @@ namespace API.Controllers
         /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
         /// <returns></returns>
-        [HttpGet("multiqueryByChar")]
+        [HttpGet("char/{field}")]
         public async Task<ActionResult<List<Movie>>> GetMovieDataByChar([FromQuery] string field, [FromQuery] string[] searchTerms)
         {
             string eField = "title"; // default
@@ -83,7 +84,7 @@ namespace API.Controllers
         /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
         /// <returns></returns>
-        [HttpGet("multiqueryByToken")]
+        [HttpGet("token/{field}")]
         public async Task<ActionResult<List<Movie>>> GetMovieDataByToken([FromQuery] string field, [FromQuery] string[] searchTerms)
         {
             string eField = "title"; // default
@@ -94,7 +95,84 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, searchTerms)));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => matchService.MatchRequest(eField, movieOBJ, searchTerms)));
+            return response.Documents.ToList();
+        }
+
+        /// <summary>
+        /// Can search for an exact match of field to search terms. Matches on a word-by-word basis. Monkey matches monkey, but Monk does not match monkey.
+        /// </summary>
+        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
+        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
+        /// <returns></returns>
+        [HttpGet("scuffedMultiQuery")]
+        public async Task<ActionResult<List<Movie>>> ByTokenPerField([FromQuery] Dictionary<string, string[]> fieldsAndSearchTerms)
+        {
+            foreach (var field in fieldsAndSearchTerms.Keys)
+            {
+                string eField = "title"; // default
+                try
+                {
+                    eField = MovieFields[field.ToLower().Trim()];
+
+                    if (MovieFields[eField] != MovieFields[field])
+                    {
+                        fieldsAndSearchTerms.Add(eField, fieldsAndSearchTerms[field]);
+                        //fieldsAndSearchTerms.Remove(field);
+                    }
+                }
+                catch (Exception e) {
+                    fieldsAndSearchTerms.Add(eField, fieldsAndSearchTerms[field]);
+                    //fieldsAndSearchTerms.Remove(field);
+                }
+
+            }
+            Movie movieOBJ = new Movie();
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiFieldMatch.MatchRequest(movieOBJ, fieldsAndSearchTerms)));
+            return response.Documents.ToList();
+        }
+
+        
+
+        /// <summary>
+        /// Can search for an exact match of field to search terms. Matches on a word-by-word basis. Monkey matches monkey, but Monk does not match monkey.
+        /// </summary>
+        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
+        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
+        /// <returns></returns>
+        [HttpPost("scuffedMultiField2")]
+        public async Task<ActionResult<List<Movie>>> ByTokenPerField2([FromBody] List<FieldTerms> fieldTerms)
+        {
+            int iter = 0;
+            List<int> badQueries = new List<int>();
+            string eField = "title"; // default
+
+            //FieldTerms test = new FieldTerms();
+            //test.searchTerms = new string[] { "Morbius" };
+            //test.field = "title";
+
+            //fieldTerms.Add(test);
+
+            foreach (var query in fieldTerms)
+            { 
+                try
+                {
+                    eField = MovieFields[query.field.ToLower().Trim()];
+                    query.field = eField;
+                }
+                catch (Exception e) {
+                    badQueries.Add(iter);
+                }
+                iter++;
+            }
+
+            foreach(int index in badQueries)
+            {
+                fieldTerms.RemoveAt(index);
+            }
+
+            Movie movieOBJ = new Movie();
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiFieldMatch2.MatchRequest(movieOBJ, fieldTerms)));
             return response.Documents.ToList();
         }
 
@@ -106,7 +184,7 @@ namespace API.Controllers
         /// <param name="minNum">The lower bound on the field (inclusive)</param>
         /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
-        [HttpGet("minmaxByField")] //api/reviews/minmaxByField
+        [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
         public async Task<ActionResult<List<Movie>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
             string eField = "metaScore"; // default
@@ -120,7 +198,7 @@ namespace API.Controllers
             if (!string.IsNullOrEmpty(specificNum))
             {
 
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiQueryMatch.MatchRequest(eField, movieOBJ, specificNum)));
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => matchService.MatchRequest(eField, movieOBJ, specificNum)));
                 return response.Documents.ToList();
             }
             else
