@@ -64,7 +64,7 @@ namespace API.Controllers
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
         /// <returns></returns>
         [HttpGet("char/{field}")]
-        public async Task<ActionResult<List<Movie>>> GetMovieDataByChar([FromQuery] string field, [FromQuery] string[] searchTerms)
+        public async Task<ActionResult<List<Movie>>> GetMovieDataByChar([FromRoute] string field, [FromQuery] string[] searchTerms)
         {
             string eField = "title"; // default
             try
@@ -85,7 +85,7 @@ namespace API.Controllers
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
         /// <returns></returns>
         [HttpGet("token/{field}")]
-        public async Task<ActionResult<List<Movie>>> GetMovieDataByToken([FromQuery] string field, [FromQuery] string[] searchTerms)
+        public async Task<ActionResult<List<Movie>>> GetMovieDataByToken([FromRoute] string field, [FromQuery] string[] searchTerms)
         {
             string eField = "title"; // default
             try
@@ -100,47 +100,49 @@ namespace API.Controllers
         }
 
         /// <summary>
-        /// Can search for an exact match of field to search terms. Matches on a word-by-word basis. Monkey matches monkey, but Monk does not match monkey.
+        ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
         /// </summary>
-        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
-        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
+        /// <param name="field">The field within a review to search on.</param>
+        /// <param name="specificNum">The exact number to match on the field</param>
+        /// <param name="minNum">The lower bound on the field (inclusive)</param>
+        /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
-        [HttpGet("scuffedMultiQuery")]
-        public async Task<ActionResult<List<Movie>>> ByTokenPerField([FromQuery] Dictionary<string, string[]> fieldsAndSearchTerms)
+        [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
+        public async Task<ActionResult<List<Movie>>> GetMinMax([FromRoute] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
-            foreach (var field in fieldsAndSearchTerms.Keys)
+            string eField = "metaScore"; // default
+            try
             {
-                string eField = "title"; // default
-                try
-                {
-                    eField = MovieFields[field.ToLower().Trim()];
-
-                    if (MovieFields[eField] != MovieFields[field])
-                    {
-                        fieldsAndSearchTerms.Add(eField, fieldsAndSearchTerms[field]);
-                        //fieldsAndSearchTerms.Remove(field);
-                    }
-                }
-                catch (Exception e) {
-                    fieldsAndSearchTerms.Add(eField, fieldsAndSearchTerms[field]);
-                    //fieldsAndSearchTerms.Remove(field);
-                }
-
+                eField = MovieFields[field.ToLower().Trim()];
             }
+            catch (Exception e) { }
+
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiFieldMatch.MatchRequest(movieOBJ, fieldsAndSearchTerms)));
-            return response.Documents.ToList();
+            if (!string.IsNullOrEmpty(specificNum))
+            {
+
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => matchService.MatchRequest(eField, movieOBJ, specificNum)));
+                return response.Documents.ToList();
+            }
+            else
+            {
+                if (minNum > maxNum)
+                {
+                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
+                }
+
+                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(eField, movieOBJ, minNum, maxNum)));
+                return response.Documents.ToList();
+            }
         }
 
-        
-
         /// <summary>
-        /// Can search for an exact match of field to search terms. Matches on a word-by-word basis. Monkey matches monkey, but Monk does not match monkey.
+        /// For each object, it will add a query on that object's field, searching on the search terms belonging to that object. It will add all queries to one request.
+        /// Each hit will abide by all queries from all objects passed (all search terms on each respective field).
         /// </summary>
-        /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
-        /// <param name="searchTerms">An array of all the terms you want to search for.</param>
+        /// <param name="fieldTerms">A list of FieldTerms objects. Each object has a string "field" and an array of strings "search terms." </param>
         /// <returns></returns>
-        [HttpPost("scuffedMultiField2")]
+        [HttpPost("advancedSearchProto")]
         public async Task<ActionResult<List<Movie>>> ByTokenPerField2([FromBody] List<FieldTerms> fieldTerms)
         {
             int iter = 0;
@@ -172,45 +174,8 @@ namespace API.Controllers
             }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiFieldMatch2.MatchRequest(movieOBJ, fieldTerms)));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiFieldMatch.MatchRequest(movieOBJ, fieldTerms)));
             return response.Documents.ToList();
-        }
-
-        /// <summary>
-        ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
-        /// </summary>
-        /// <param name="field">The field within a review to search on.</param>
-        /// <param name="specificNum">The exact number to match on the field</param>
-        /// <param name="minNum">The lower bound on the field (inclusive)</param>
-        /// <param name="maxNum">The higher bound on the field (inclusive)</param>
-        /// <returns></returns>
-        [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Movie>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
-        {
-            string eField = "metaScore"; // default
-            try
-            {
-                eField = MovieFields[field.ToLower().Trim()];
-            }
-            catch (Exception e) { }
-
-            Movie movieOBJ = new Movie();
-            if (!string.IsNullOrEmpty(specificNum))
-            {
-
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => matchService.MatchRequest(eField, movieOBJ, specificNum)));
-                return response.Documents.ToList();
-            }
-            else
-            {
-                if (minNum > maxNum)
-                {
-                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
-                }
-
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(eField, movieOBJ, minNum, maxNum)));
-                return response.Documents.ToList();
-            }
         }
 
         [HttpPost("")]
