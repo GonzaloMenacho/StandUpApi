@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace API
+namespace API.services
 {
     public class JsonHandler
     {

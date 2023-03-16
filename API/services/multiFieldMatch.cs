@@ -4,26 +4,29 @@ using Nest;
 namespace API.services
 {
     //TODO: add an nGram tokenizer to have partial word matches (i.e., "ave" should maybe "avengers")
-    public class multiQueryMatch
+    public class multiFieldMatch
     {
-        private static QueryContainer[] MatchListBuilder(string field, string[] searchTerms)
+        private static QueryContainer[] MatchListBuilder(List<FieldTerms> fieldTerms)
         {
             QueryContainer orQuery = null;
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
-            foreach (var item in searchTerms)
+            foreach (var query in fieldTerms)
             {
-                orQuery = new MatchQuery() { Field = field, Query = item};
-                queryContainerList.Add(orQuery);
+                foreach (var searchTerm in query.searchTerms)
+                {
+                    orQuery = new MatchQuery() { Field = query.field, Query = searchTerm };
+                    queryContainerList.Add(orQuery);
+                }
             }
             return queryContainerList.ToArray();
         }
 
-        public static QueryContainer MatchRequest<T>(string field, T typeOBJ, params string[] searchTerms) where T : class
+        public static QueryContainer MatchRequest<T>(T typeOBJ, List<FieldTerms> fieldTerms) where T : class
         {
             // to know what model to use, we need to be passed a class object of that model. Might be a better way?
             var q = new QueryContainerDescriptor<T>().Bool(
-                b => b.Should(
-                    MatchListBuilder(field, searchTerms)));
+                b => b.Must(
+                    MatchListBuilder(fieldTerms)));
             return q;
         }
     }
