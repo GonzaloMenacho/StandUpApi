@@ -156,19 +156,20 @@ namespace API.Controllers
             //fieldTerms.Add(test);
 
             foreach (var query in fieldTerms)
-            { 
+            {
                 try
                 {
                     eField = MovieFields[query.field.ToLower().Trim()];
                     query.field = eField;
                 }
-                catch (Exception e) {
+                catch (Exception e)
+                {
                     badQueries.Add(iter);
                 }
                 iter++;
             }
 
-            foreach(int index in badQueries)
+            foreach (int index in badQueries)
             {
                 fieldTerms.RemoveAt(index);
             }
@@ -177,6 +178,65 @@ namespace API.Controllers
             var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiFieldMatch.MatchRequest(movieOBJ, fieldTerms)));
             return response.Documents.ToList();
         }
+
+
+        // This method should be called at the startup of the website for the first time.
+        // It returns the first 10 movies in the Movie index,
+        // along with 3 reviews for each movie from the Reviews index
+        // this is stored in the form of the "MovieReviewInitialization" object, see MovieReviewInitialization.cs
+        // plz don't delete, elijah T^T
+        [HttpGet("initialize-cache")]
+        public async Task<ActionResult<MovieReviewInitialization>> GetCacheInitialization()
+        {
+            try
+            {
+                // get all the movie documents in the db
+                // returns 10 movies
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                    .Index(movieIndex)
+                    .Size(10)
+                    .Query(q => q.MatchAll()));
+                if (!response.IsValid)  // if we didn't reach the database for the movies
+                {
+                    return BadRequest("Failed to retrieve movie jsons in CacheInitialization.");
+                }
+                List<Movie> movielist = response.Documents.ToList();   // save the response for now
+
+                List<List<Review>> reviewlist = new List<List<Review>>();
+                foreach (Movie movie in movielist) // for each movie in our movie list
+                {
+                    int movieid = movie.MovieID;    // grab the movieID
+                    var res = await _elasticClient.SearchAsync<Review>(s => s
+                        .Index("reviews")   // https://tenor.com/view/now-whos-gonna-stop-me-bowser-the-super-mario-bros-movie-try-to-stop-me-now-im-unstoppable-gif-26913745
+                        .Size(3)            // limits the number of hits to 3
+                        .Query(q => q
+                            .Match(m => m                   // perform a match query
+                                .Field(f => f.MovieID)      // match on the "MovieID" field
+                                .Query(movieid.ToString())  // pass the movieid as a string
+                                )
+                            )
+                        );
+                    if (!res.IsValid)   // if we didn't get the review json back
+                    {
+                        return BadRequest("Failed to retrieve review jsons in CacheInitialization.");
+                    }
+                    reviewlist.Add(res.Documents.ToList()); // append the response to the movie list.
+                }
+
+                MovieReviewInitialization movieReviewInitialization = new MovieReviewInitialization
+                {
+                    MovieDocuments = movielist,
+                    ReviewDocuments = reviewlist
+                };
+                return Ok(movieReviewInitialization);   // return the MRI object with status 200
+
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
 
         [HttpPost("")]
         public async Task<string> Post(Movie value)
