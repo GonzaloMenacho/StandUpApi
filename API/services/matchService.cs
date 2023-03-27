@@ -3,10 +3,9 @@ using Nest;
 
 namespace API.services
 {
-    //TODO: add an nGram tokenizer to have partial word matches (i.e., "ave" should maybe "avengers")
     public class matchService
     {
-        private static QueryContainer[] MatchListBuilder(string field, string[] searchTerms)
+        public static QueryContainer[] MatchListBuilder(string field, string[] searchTerms)
         {
             QueryContainer orQuery = null;
             List<QueryContainer> queryContainerList = new List<QueryContainer>();

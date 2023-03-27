@@ -143,7 +143,7 @@ namespace API.Controllers
         /// <param name="fieldTerms">A list of FieldTerms objects. Each object has a string "field" and an array of strings "search terms." </param>
         /// <returns></returns>
         [HttpPost("advancedSearchProto")]
-        public async Task<ActionResult<List<Movie>>> ByTokenPerField2([FromBody] List<FieldTerms> fieldTerms)
+        public async Task<ActionResult<List<Movie>>> ByTokenPerField([FromBody] List<FieldTerms> fieldTerms)
         {
             int iter = 0;
             List<int> badQueries = new List<int>();
@@ -185,6 +185,7 @@ namespace API.Controllers
         // along with 3 reviews for each movie from the Reviews index
         // this is stored in the form of the "MovieReviewInitialization" object, see MovieReviewInitialization.cs
         // plz don't delete, elijah T^T
+        // LOL^
         [HttpGet("initialize-cache")]
         public async Task<ActionResult<MovieReviewInitialization>> GetCacheInitialization()
         {

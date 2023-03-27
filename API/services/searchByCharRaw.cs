@@ -8,7 +8,7 @@ namespace API.services
     public class searchByCharRaw
     {
 
-        private static QueryContainer[] RegexpListBuilder(string field, string[] searchTerms)
+        public static QueryContainer[] RegexpListBuilder(string field, string[] searchTerms)
         {
             QueryContainer orQuery = null;
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
