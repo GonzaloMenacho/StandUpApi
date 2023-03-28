@@ -6,12 +6,7 @@ namespace API.services
 {
     public class minMaxService
     {
-        public Type GetOBJType<T>(T typeObject) where T : class
-        {
-            return typeObject.GetType();
-        }
-
-        private static QueryContainer[] RangeQueryBuilder(string field, float minNum, float maxNum)
+        public static QueryContainer[] RangeQueryBuilder(string field, float minNum, float maxNum)
         {
             QueryContainer orQuery = null;
             List<QueryContainer> queryContainerList = new List<QueryContainer>();

@@ -3,19 +3,27 @@ using Nest;
 
 namespace API.services
 {
-    //TODO: add an nGram tokenizer to have partial word matches (i.e., "ave" should maybe "avengers")
+    //TODO: add some way to handle both movies and reviews in one advanced search. How do we grab only reviews of movies that meet our specified criteria?
+    // Ideas: search on the movie criteria first, then add a query on the reviews that says "grab only reviews from these movieIDs"
     public class multiFieldMatch
     {
         private static QueryContainer[] MatchListBuilder(List<FieldTerms> fieldTerms)
         {
-            QueryContainer orQuery = null;
+            //QueryContainer orQuery = null;
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
             foreach (var query in fieldTerms)
             {
-                foreach (var searchTerm in query.searchTerms)
+                if (query.field == "title") // movie titles should search by Char
                 {
-                    orQuery = new MatchQuery() { Field = query.field, Query = searchTerm };
-                    queryContainerList.Add(orQuery);
+                    queryContainerList.AddRange(searchByCharRaw.RegexpListBuilder(query.field, query.searchTerms));
+                }
+                else if (!query.isMinMax)
+                {
+                    queryContainerList.AddRange(matchService.MatchListBuilder(query.field, query.searchTerms));
+                }
+                else
+                {
+                    queryContainerList.AddRange(minMaxService.RangeQueryBuilder(query.field, query.minTerm, query.maxTerm));
                 }
             }
             return queryContainerList.ToArray();
