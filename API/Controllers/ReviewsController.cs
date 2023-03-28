@@ -58,8 +58,8 @@ namespace API.Controllers
         /// <param name="field">The field to search movies by. Must match the capitalization and spelling of the elasticsearch field, not the model's attribute.</param>
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
         /// <returns></returns>
-        [HttpGet("multiqueryByField")]
-        public async Task<ActionResult<List<Review>>> GetMovieData([FromQuery] string field, [FromQuery] string[] searchTerms)
+        [HttpGet("token/{field}")]
+        public async Task<ActionResult<List<Review>>> GetReviewData([FromRoute] string field, [FromQuery] string[] searchTerms)
         {
             string eField = ReviewFields["reviewtitle"]; // default
             try
@@ -82,8 +82,8 @@ namespace API.Controllers
         /// <param name="minNum">The lower bound on the field (inclusive)</param>
         /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
-        [HttpGet("minmaxByField")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Review>>> GetMinMax([FromQuery] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum) 
+        [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
+        public async Task<ActionResult<List<Review>>> GetMinMax([FromQuery] string field, [FromRoute] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum) 
         {
             string eField = ReviewFields["userrating"]; // default
             try
