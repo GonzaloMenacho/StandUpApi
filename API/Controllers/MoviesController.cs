@@ -180,13 +180,216 @@ namespace API.Controllers
         }
 
 
+        [HttpGet("search")]
+        public async Task<ActionResult<MovieReview>> GetMovieReviewFromTerm(string? term = null)
+        {
+            if (term == null)
+            {
+                try
+                {
+                    // get all the movie documents in the db
+                    // returns 10 movies
+                    List<Movie> movielist = new List<Movie>();
+                    var response = await _elasticClient.SearchAsync<Movie>(s => s
+                        .Index(movieIndex)
+                        .Size(10)
+                        .Query(q => q.MatchAll()));
+                    if (!response.IsValid)  // if we didn't reach the database for the movies
+                    {
+                        return BadRequest("Failed to find movies in GetMovieReviewFromTerm.");
+                    }
+                    movielist = response.Documents.ToList();
+
+
+                    List<List<Review>> reviewlist = new List<List<Review>>();
+                    foreach (Movie movie in movielist) // for each movie in our movie list
+                    {
+                        int movieid = movie.MovieID;    // grab the movieID
+                        var res = await _elasticClient.SearchAsync<Review>(s => s
+                            .Index("reviews")   // https://tenor.com/view/now-whos-gonna-stop-me-bowser-the-super-mario-bros-movie-try-to-stop-me-now-im-unstoppable-gif-26913745
+                            .Size(3)            // limits the number of hits to 3
+                            .Query(q => q
+                                .Match(m => m                   // perform a match query
+                                    .Field(f => f.MovieID)      // match on the "MovieID" field
+                                    .Query(movieid.ToString())  // pass the movieid as a string
+                                    )
+                                )
+                            );
+                        if (!res.IsValid)   // if we didn't get the review json back
+                        {
+                            return BadRequest("Failed to retrieve reviews with an empty string.");
+                        }
+                        reviewlist.Add(res.Documents.ToList()); // append the response to the movie list.
+                    }
+
+                    // return the moviereview object
+                    MovieReview movieReview = new MovieReview
+                    {
+                        MovieDocuments = movielist,
+                        ReviewDocuments = reviewlist
+                    };
+                    return Ok(movieReview);   // return the MR object with status 200
+                }
+                catch (Exception e)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+                }
+            }
+
+            // search movies
+
+            //preprocessing (because searchByCharRaw doesn't get me what i need)
+            string regextext = null;
+            if (term != null)
+            {
+                regextext = Regex.Replace(term, @"[^\w- ]|_", " ");
+                regextext = regextext.Trim();
+                string fixed_term = "";
+                foreach (char c in regextext)
+                {
+                    if (c >= 'a' && c <= 'z')
+                    {
+                        fixed_term += $"[{(char)(c - 32)}{c}]";
+                    }
+                    else if (c >= 'A' && c <= 'Z')
+                    {
+                        fixed_term += $"[{c}{(char)(c + 32)}]";
+                    }
+                    else
+                    {
+                        fixed_term += $"[{c}]?";   // if " ", "-", or other special character, make it zero or 1
+                    }
+                }
+                regextext = $".*{fixed_term}.*";
+            }
+
+
+            try
+            {
+                // search movies //
+
+                List<Movie> movielist = new List<Movie>();
+                if (regextext != null)
+                {
+                    var response = await _elasticClient.SearchAsync<Movie>(s => s
+                        .Index(movieIndex)
+                        .Size(10)
+                        .Query(q => q
+                            .Regexp(m => m
+                                .Field(f => f.Title)
+                                .Value(regextext)
+                                )
+                            )
+                        );
+                    if (!response.IsValid)
+                    {
+                        return BadRequest("Failed to find movies in GetMovieReviewFromTerm.");
+                    }
+                    movielist = response.Documents.ToList();
+                }
+
+                if (movielist.Count == 0)
+                {
+                    // get all the movie documents in the db
+                    // returns 10 movies
+                    var res = await _elasticClient.SearchAsync<Movie>(s => s
+                        .Index(movieIndex)
+                        .Size(10)
+                        .Query(q => q.MatchAll()));
+                    if (!res.IsValid)  // if we didn't reach the database for the movies
+                    {
+                        return BadRequest("Failed to find movies in GetMovieReviewFromTerm.");
+                    }
+                    movielist = res.Documents.ToList();
+                }
+
+                // search reviews //
+
+                // if we have movies, then grab 3 reviews for each movie
+                List<List<Review>> reviewlist = new List<List<Review>>();
+                if (movielist.Count > 0)
+                {
+                    foreach (Movie movie in movielist)
+                    {
+                        var res = await _elasticClient.SearchAsync<Review>(s => s
+                            .Index("reviews")
+                            .Query(q => q
+                                .FunctionScore(fs => fs     //this lets us return better results
+                                    .Query(q2 => q2
+                                        .MultiMatch(m => m
+                                            .Fields(f => f  // search the term on these fields:
+                                                .Field(doc => doc.ReviewTitle, boost: 2.5)      // add boosting to the title
+                                                .Field(doc => doc.ReviewBody)
+                                            )
+                                            .Query(term.ToString())     // the term we're querying
+                                            .Slop(2)                    // character misplacements (typos: avengers=>aevngers)
+                                            .Fuzziness(Fuzziness.Auto)  // token distance (tomato soup=>soup tomatos)
+                                            .PrefixLength(2)            // allows prefixes (
+                                            .MaxExpansions(1)          // limits the amount of docs returned
+                                            .Operator(Operator.Or)
+                                            .Name($"s?={term}")
+                                            .AutoGenerateSynonymsPhraseQuery(false)
+                                            ) && q      // this lets us grab movies based on movieID
+                                            .Term(t => t
+                                                .Field(f => f.MovieID)
+                                                .Value(movie.MovieID)
+                                            )
+                                        )
+                                    .BoostMode(FunctionBoostMode.Multiply)  // boosting settings
+                                    .ScoreMode(FunctionScoreMode.Sum)       // score settings
+                                    .Functions(f => f           // ngl, chatgpt moment
+                                        .Exponential(d => d     // this basically says add a bit of boosting to reviews with higher relevance scores
+                                            .Field(f => f.UsefulnessVote)
+                                            .Decay(0.33)
+                                            .Origin(5000)
+                                            .Scale(5)
+                                            .Offset(1)
+                                            .Weight(0.1)
+                                            )
+                                        )
+                                    )
+                                )
+                            .Size(3)
+                            // sorts either by score or usefulnessvotes, i think usefulnessvotes looks way better.
+                            .Sort(sort => sort
+                                .Descending("_score")           // this sorts by relevancy
+                                //.Descending(f => f.UsefulnessVote)    // this sorts by usefulness votes
+                            )
+                            );
+                        if (!res.IsValid)
+                        {
+                            return BadRequest("Failed to find reviews in the big GetMovieReviewFromTerm function.");
+                        }
+                        if (res.Documents.Any())    // if we get no reviews, don't add to the list
+                        {
+                            reviewlist.Add(res.Documents.ToList());
+                        }
+                    }
+                }   
+
+                // return the moviereview object
+                MovieReview movieReview = new MovieReview
+                {
+                    MovieDocuments = movielist,
+                    ReviewDocuments = reviewlist
+                };
+                return Ok(movieReview);   // return the MR object with status 200
+            }
+
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+
         // This method should be called at the startup of the website for the first time.
         // It returns the first 10 movies in the Movie index,
         // along with 3 reviews for each movie from the Reviews index
         // this is stored in the form of the "MovieReviewInitialization" object, see MovieReviewInitialization.cs
         // plz don't delete, elijah T^T
         [HttpGet("initialize-cache")]
-        public async Task<ActionResult<MovieReviewInitialization>> GetCacheInitialization()
+        public async Task<ActionResult<MovieReview>> GetCacheInitialization()
         {
             try
             {
@@ -223,7 +426,7 @@ namespace API.Controllers
                     reviewlist.Add(res.Documents.ToList()); // append the response to the movie list.
                 }
 
-                MovieReviewInitialization movieReviewInitialization = new MovieReviewInitialization
+                MovieReview movieReviewInitialization = new MovieReview
                 {
                     MovieDocuments = movielist,
                     ReviewDocuments = reviewlist
