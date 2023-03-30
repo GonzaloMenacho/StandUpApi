@@ -51,7 +51,10 @@ namespace API.Controllers
         {
             var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
-                .Query(q => q.MatchAll()));
+                .Query(q => q
+                    .MatchAll()
+                    )
+                );
             // returns all movies (actually defaults to first 10)
 
             return response.Documents.ToList();
@@ -74,7 +77,12 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => searchByCharRaw.RegexpRequest(eField, movieOBJ, searchTerms)));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s
+                .Index(movieIndex)
+                .Query(q => searchByCharRaw
+                    .RegexpRequest(eField, movieOBJ, searchTerms)
+                    )
+                );
             return response.Documents.ToList();
         }
 
@@ -95,7 +103,12 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => matchService.MatchRequest(eField, movieOBJ, searchTerms)));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s
+                .Index(movieIndex)
+                .Query(q => matchService
+                    .MatchRequest(eField, movieOBJ, searchTerms)
+                    )
+                );
             return response.Documents.ToList();
         }
 
@@ -121,7 +134,12 @@ namespace API.Controllers
             if (!string.IsNullOrEmpty(specificNum))
             {
 
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => matchService.MatchRequest(eField, movieOBJ, specificNum)));
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                    .Index(movieIndex)
+                    .Query(q => matchService
+                        .MatchRequest(eField, movieOBJ, specificNum)
+                        )
+                    );
                 return response.Documents.ToList();
             }
             else
@@ -131,7 +149,12 @@ namespace API.Controllers
                     return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
                 }
 
-                var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => minMaxService.RangeRequest(eField, movieOBJ, minNum, maxNum)));
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                    .Index(movieIndex)
+                    .Query(q => minMaxService
+                        .RangeRequest(eField, movieOBJ, minNum, maxNum)
+                        )
+                    );
                 return response.Documents.ToList();
             }
         }
@@ -175,7 +198,12 @@ namespace API.Controllers
             }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s.Index(movieIndex).Query(q => multiFieldMatch.MatchRequest(movieOBJ, fieldTerms)));
+            var response = await _elasticClient.SearchAsync<Movie>(s => s
+                .Index(movieIndex)
+                .Query(q => multiFieldMatch
+                    .MatchRequest(movieOBJ, fieldTerms)
+                    )
+                );
             return response.Documents.ToList();
         }
 
@@ -214,6 +242,11 @@ namespace API.Controllers
                                     .Query(movieid.ToString())  // pass the movieid as a string
                                     )
                                 )
+                            // sorts either by score or usefulnessvotes, i think usefulnessvotes looks way better.
+                            .Sort(sort => sort
+                                .Descending("_score")           // this sorts by relevancy
+                                //.Descending(f => f.UsefulnessVote)    // this sorts by usefulness votes
+                            )
                             );
                         if (!res.IsValid)   // if we didn't get the review json back
                         {
