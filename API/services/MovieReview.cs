@@ -1,7 +1,7 @@
 ﻿namespace API.services
 {
     // this class lets us return a single object when grabbing the documents needed to initialize the cache.
-    public class MovieReviewInitialization
+    public class MovieReview
     {
         public List<Movie> MovieDocuments { get; set; }
         public List<List<Review>> ReviewDocuments { get; set; } // F for the frontend guys
