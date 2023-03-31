@@ -388,6 +388,141 @@ namespace API.Controllers
         }
 
 
+        [HttpPost("cooler-advanced-search")]
+        public async Task<ActionResult<MovieReview>> GetMovieReviewFromTerm([FromQuery] string[]? title,
+                                                                            [FromQuery] string[]? keyword,
+                                                                            [FromQuery] string[]? rating,
+                                                                            [FromQuery] string[]? genre,
+                                                                            [FromQuery] string[]? reviewscore)
+        {
+            // search movies //
+            List<Movie> movielist = new List<Movie>();
+            try
+            {
+                Movie movieobj = new Movie();
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                    .Index(movieIndex)
+                    .Query(q =>
+                        searchByCharRaw.RegexpRequest("title", movieobj, title)
+                        )
+                    );
+                if (!response.IsValid)   // if we didn't get the review json back
+                {
+                    return BadRequest("Failed to retrieve movie jsons in cooler-advanced-search.");
+                }
+                movielist = response.Documents.ToList(); // append the response to the movie list.
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+
+            if (movielist.Count == 0)
+            {
+                // get all the movie documents in the db
+                // returns 10 movies
+                try
+                {
+                    var res = await _elasticClient.SearchAsync<Movie>(s => s
+                        .Index(movieIndex)
+                        .Size(10)
+                        .Query(q => q
+                            .MatchAll()
+                            )
+                        );
+                    if (!res.IsValid)  // if we didn't reach the database for the movies
+                    {
+                        return BadRequest("Failed to find movies in GetMovieReviewFromTerm.");
+                    }
+                    movielist = res.Documents.ToList();
+                }
+                catch (Exception e)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+                }
+            }
+
+
+            // search reviews //
+            /*
+             * [FromQuery] string[]? title,
+             * [FromQuery] string[]? keyword,
+             * [FromQuery] string[]? rating,
+             * [FromQuery] string[]? genre,
+             * [FromQuery] string[]? reviewscore
+             * 
+             */
+            List<List<Review>> reviewlist = new List<List<Review>>();
+            foreach (Movie movie in movielist)
+            {
+                // convert the reviewscore strings to doubles and default it to a range of 0 to 10
+                double[] reviewscoreDoubles = reviewscore.Select(x => double.TryParse(x, out double result) ? result : 0).ToArray();
+                double minScore = reviewscoreDoubles.Length > 0 ? reviewscoreDoubles[0] : 0;
+                double maxScore = reviewscoreDoubles.Length > 1 ? reviewscoreDoubles[1] : 10;
+
+                try
+                {
+                    var res = await _elasticClient.SearchAsync<Review>(s => s
+                        .Index("reviews")
+                        .Query(q => q
+                            .Bool(b => b
+                                .Should(m => m
+                                    .MultiMatch(mm => mm
+                                        .Fields(f => f
+                                            .Field(ff => ff.ReviewBody)
+                                            .Field(ff => ff.ReviewTitle)
+                                            )
+                                        .Type(TextQueryType.MostFields)
+                                        .Query(keyword.Length < 1 ? "" : keyword[0])
+                                        /*
+                                        .Query(string.Join(" ", keyword.Where(
+                                            x => !string.IsNullOrEmpty(x))))       
+                                        */
+                                        .Slop(2)                    // character misplacements (typos: avengers=>aevngers)
+                                        .Fuzziness(Fuzziness.Auto)  // token distance (tomato soup=>soup tomatos)
+                                        .PrefixLength(2)            // allows prefixes (
+                                        .MaxExpansions(1)          // limits the amount of docs returned
+                                        .Operator(Operator.Or)
+                                        .AutoGenerateSynonymsPhraseQuery(false)
+                                        ) && q      // this lets us grab movies based on movieID
+                                        .Term(t => t
+                                            .Field(f => f.MovieID)
+                                            .Value(movie.MovieID)
+                                        )
+                                        ) // m=>m
+                                    .Filter(f => f
+                                        .Range(r => r
+                                            .Field(f => f.UserRating)
+                                            .GreaterThanOrEquals(minScore)
+                                            .LessThanOrEquals(maxScore)
+                                            )
+                                  )
+                              )
+                            )
+                        );
+
+                    if (!res.IsValid)   // if we didn't get the review json back
+                    {
+                        return BadRequest("Failed to retrieve review jsons in cooler-advanced-search.");
+                    }
+                    reviewlist.Add(res.Documents.ToList()); // append the response to the movie list.
+                }
+                catch (Exception e)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+                }
+            }
+            
+
+            MovieReview moviereviewlist = new MovieReview
+            {
+                MovieDocuments = movielist,
+                ReviewDocuments = reviewlist
+            };
+            return moviereviewlist;
+        }
+
+
         // This method should be called at the startup of the website for the first time.
         // It returns the first 10 movies in the Movie index,
         // along with 3 reviews for each movie from the Reviews index
