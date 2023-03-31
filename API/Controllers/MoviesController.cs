@@ -269,57 +269,26 @@ namespace API.Controllers
                 }
             }
 
-            // search movies
-
-            //preprocessing (because searchByCharRaw doesn't get me what i need)
-            string regextext = null;
-            if (term != null)
-            {
-                regextext = Regex.Replace(term, @"[^\w- ]|_", " ");
-                regextext = regextext.Trim();
-                string fixed_term = "";
-                foreach (char c in regextext)
-                {
-                    if (c >= 'a' && c <= 'z')
-                    {
-                        fixed_term += $"[{(char)(c - 32)}{c}]";
-                    }
-                    else if (c >= 'A' && c <= 'Z')
-                    {
-                        fixed_term += $"[{c}{(char)(c + 32)}]";
-                    }
-                    else
-                    {
-                        fixed_term += $"[{c}]?";   // if " ", "-", or other special character, make it zero or 1
-                    }
-                }
-                regextext = $".*{fixed_term}.*";
-            }
-
-
             try
             {
                 // search movies //
 
                 List<Movie> movielist = new List<Movie>();
-                if (regextext != null)
+
+
+                Movie movieobj = new Movie();
+                string[] termsList = { term };      // unecessarily needed, but absolutely required
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                    .Index(movieIndex)
+                    .Query(q =>
+                        searchByCharRaw.RegexpRequest("title", movieobj, termsList)
+                        )
+                    );
+                if (!response.IsValid)
                 {
-                    var response = await _elasticClient.SearchAsync<Movie>(s => s
-                        .Index(movieIndex)
-                        .Size(10)
-                        .Query(q => q
-                            .Regexp(m => m
-                                .Field(f => f.Title)
-                                .Value(regextext)
-                                )
-                            )
-                        );
-                    if (!response.IsValid)
-                    {
-                        return BadRequest("Failed to find movies in GetMovieReviewFromTerm.");
-                    }
-                    movielist = response.Documents.ToList();
+                    return BadRequest("Failed to find movies in GetMovieReviewFromTerm.");
                 }
+                movielist = response.Documents.ToList();
 
                 if (movielist.Count == 0)
                 {
@@ -328,7 +297,10 @@ namespace API.Controllers
                     var res = await _elasticClient.SearchAsync<Movie>(s => s
                         .Index(movieIndex)
                         .Size(10)
-                        .Query(q => q.MatchAll()));
+                        .Query(q => q
+                            .MatchAll()
+                            )
+                        );
                     if (!res.IsValid)  // if we didn't reach the database for the movies
                     {
                         return BadRequest("Failed to find movies in GetMovieReviewFromTerm.");
