@@ -13,84 +13,16 @@ namespace API.services
         {
             List<Movie> movielist = new List<Movie>();
             List<List<Review>> reviewlist = new List<List<Review>>();
-
-            if (term == null)
+            try
             {
-                // get all the movie documents in the db
-                // returns 10 movies
-                try
-                {
-                    var res = MatchAllGetMovieList(_elasticClient);
-                    movielist = res.Result;
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(ex.Message);
-                }
-
-                Review reviewOBJ = new Review();
-                foreach (Movie movie in movielist) // for each movie in our movie list
-                {
-                    string[] movieidarr = { movie.MovieID.ToString() };
-                    var res = await MatchSearchQuery(_elasticClient, new Review(), "movieID", movieidarr, 3);
-
-                    if (!res.IsValid)   // if we didn't get the review json back
-                    {
-                        throw new HttpRequestException("Failed to retrieve reviews in BasicSearchService with an empty string.");
-                    }
-
-                    reviewlist.Add(res.Documents.ToList()); // append the response to the movie list.
-                }
+                var movieres = await GetMovieListFromMatchedTerm(_elasticClient, term);
+                movielist = movieres;
+                var reviewres = await GetWeightedReviewList(_elasticClient, movielist, term, reviewIndex, 3);
+                reviewlist = reviewres;
             }
-            else
+            catch (Exception e)
             {
-                // search movies //
-                Movie movieobj = new Movie();
-                string[] termsList = { term };      // unecessarily needed, but absolutely required
-                var response = await _elasticClient.SearchAsync<Movie>(s => s
-                    .Index(movieIndex)
-                    .Query(q =>
-                        searchByCharRaw.RegexpRequest("title", movieobj, termsList)
-                        )
-                    );
-                if (!response.IsValid)
-                {
-                    throw new HttpRequestException("Failed to Regexp match movies in BasicSearchService.");
-                }
-                movielist = response.Documents.ToList();
-
-                if (movielist.Count == 0)
-                {
-                    try
-                    {
-                        var res = MatchAllGetMovieList(_elasticClient);
-                        movielist = res.Result;
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new Exception(ex.Message);
-                    }
-                }
-
-                // search reviews //
-
-                // if we have movies, then grab 3 reviews for each movie
-                if (movielist.Count > 0)
-                {
-                    foreach (Movie movie in movielist)
-                    {
-                        var res = await GetWeightedReviewQuery(_elasticClient, movie, term, reviewIndex, 3);
-                        if (!res.IsValid)
-                        {
-                            throw new HttpRequestException("Failed to find reviews in BasicSearchService function.");
-                        }
-                        if (res.Documents.Any())    // if we get no reviews, don't add to the list
-                        {
-                            reviewlist.Add(res.Documents.ToList());
-                        }
-
-                    }
-                }
+                throw new Exception(e.Message);
             }
 
             // return the moviereview object
@@ -102,13 +34,62 @@ namespace API.services
             return movieReview;   // return the MR object with status 200
         }
 
+
+        // this function takes a term and tries to match on the title (or other)
+        // returns a List<Movie>
+        public static async Task<List<Movie>> GetMovieListFromMatchedTerm(
+            IElasticClient _elasticClient,
+            string term = null,
+            string? field = "title",
+            string? index = "movies")
+        {
+            // search movies //
+            List<Movie> movielist = new List<Movie>();
+
+            if (term != null)
+            {
+                // First, check if the term hit on the movie field
+                Movie movieobj = new Movie();       // create required objects to allow
+                string[] termsList = { term };      // RegexpRequest to work
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                    .Index(movieIndex)
+                    .Query(q =>
+                        searchByCharRaw.RegexpRequest(field, movieobj, termsList)
+                        )
+                    );
+                if (!response.IsValid)
+                {
+                    throw new HttpRequestException("Failed to Regexp match movies in BasicSearchService.");
+                }
+                movielist = response.Documents.ToList();
+            }
+
+            // If term did not hit on the movie field, do a match all
+            // comment this chunk out if we want to return no movies
+            if (movielist.Count == 0)
+            {
+                try
+                {
+                    var res = await MatchAllGetMovieList(_elasticClient);
+                    movielist = res;
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.Message);
+                }
+            }
+
+            return movielist;
+        }
+
+
         // get all the movie documents in the db
         // defaults to 10
         // returns as List<Movie>
         public static async Task<List<Movie>> MatchAllGetMovieList(IElasticClient _elasticClient, int? size = 10, string? index = "movies")
         {
-            List<Movie> movieList = new List<Movie>();  
-            var response = await MatchAllQuery(_elasticClient, index, size);
+            List<Movie> movieList = new List<Movie>();
+            var response = await MatchAllMoviesQuery(_elasticClient, index, size);
             if (!response.IsValid)  // if we didn't reach the database for the movies
             {
                 throw new HttpRequestException("Failed to get a response in GetAllMovieList.");
@@ -117,10 +98,11 @@ namespace API.services
             return movieList;
         }
 
+
         // Ease of access for MatchAll Query
         // Specify index "movies" or "reviews"
         // Specify size to determine how many documents are returned
-        public static async Task<ISearchResponse<Movie>> MatchAllQuery(IElasticClient _elasticClient, string index, int? size = 10)
+        public static async Task<ISearchResponse<Movie>> MatchAllMoviesQuery(IElasticClient _elasticClient, string index, int? size = 10)
         {
             if (_elasticClient is null)
             {
@@ -144,6 +126,46 @@ namespace API.services
             }
             return response;
         }
+
+
+        // This returns the most relevant reviews for a list of movies.
+        // returns List<List<Review>>
+        public static async Task<List<List<Review>>> GetMatchedIDReviewList(
+            IElasticClient _elasticClient,
+            List<Movie> movielist,
+            int? size = 3,
+            string? field = "movieID"
+            )
+        {
+            if (_elasticClient is null)
+            {
+                throw new ArgumentNullException(nameof(_elasticClient));
+            }
+
+            if (movielist is null)
+            {
+                throw new ArgumentNullException(nameof(movielist));
+            }
+
+            Review reviewOBJ = new Review();    // to pass in the review document needed
+            List<List<Review>> reviewlist = new List<List<Review>>();
+
+            foreach (Movie movie in movielist) // for each movie in our movie list
+            {
+                string[] movieidarr = { movie.MovieID.ToString() };
+                var res = await MatchSearchQuery(_elasticClient, reviewOBJ, field, movieidarr, 3);
+
+                if (!res.IsValid)   // if we didn't get the review json back
+                {
+                    throw new HttpRequestException("Failed to retrieve reviews in BasicSearchService with an empty string.");
+                }
+
+                reviewlist.Add(res.Documents.ToList()); // append the response to the movie list.
+            }
+
+            return reviewlist;
+        }
+
 
         // Get response for a specific Match query
         public static async Task<ISearchResponse<T>> MatchSearchQuery<T>(
@@ -198,6 +220,45 @@ namespace API.services
             return response;
         }
 
+
+        // This returns reviews with scores boosted according to the UsefulnessVotes parameter.
+        // returns List<List<Review>>
+        public static async Task<List<List<Review>>> GetWeightedReviewList(
+            IElasticClient _elasticClient, 
+            List<Movie> movielist, 
+            string? term = "",
+            string? index = "reviews",
+            int? size = 3)
+        {
+            if (_elasticClient is null)
+            {
+                throw new ArgumentNullException(nameof(_elasticClient));
+            }
+
+            if (movielist is null || movielist.Count == 0)
+            {
+                throw new ArgumentNullException(nameof(movielist));
+            }
+
+            List<List<Review>> reviewlist = new List<List<Review>>();
+
+            foreach (Movie movie in movielist)
+            {
+                var res = await GetWeightedReviewQuery(_elasticClient, movie, term, reviewIndex, 3);
+                if (!res.IsValid)
+                {
+                    throw new HttpRequestException("Failed to find reviews in BasicSearchService GetWeightedReviewList function.");
+                }
+                if (res.Documents.Any())    // if we get no reviews, don't add to the list
+                {
+                    reviewlist.Add(res.Documents.ToList());
+                }
+            }
+
+            return reviewlist;
+        }
+
+
         // This performs a match query matching the term to the review index
         // This function also boosts scores with higher usefulness votes
         public static async Task<ISearchResponse<Review>> GetWeightedReviewQuery(
@@ -240,11 +301,6 @@ namespace API.services
         // movie has to not be an actual movie object, not an empty one
         public static QueryContainer GetWeightedReviewQueryContainer(string term, Movie movie)
         {
-            if (term is null)
-            {
-                throw new ArgumentNullException(nameof(term));
-            }
-
             if (movie is null)
             {
                 throw new ArgumentNullException(nameof(movie));
