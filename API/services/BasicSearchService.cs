@@ -18,19 +18,21 @@ namespace API.services
             {
                 // get all the movie documents in the db
                 // returns 10 movies
-                var response = await MatchAllQuery(_elasticClient, movieIndex, 10);
-
-                if (!response.IsValid)  // if we didn't reach the database for the movies
+                try
                 {
-                    throw new HttpRequestException("Failed to MatchAll movies in BasicSearchService.");
+                    var res = MatchAllGetMovieList(_elasticClient);
+                    movielist = res.Result;
                 }
-                movielist = response.Documents.ToList();
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.Message);
+                }
 
                 Review reviewOBJ = new Review();
                 foreach (Movie movie in movielist) // for each movie in our movie list
                 {
                     string[] movieidarr = { movie.MovieID.ToString() };
-                    var res = await MatchSearchQuery(_elasticClient, new Review(), "movieID", movieidarr);
+                    var res = await MatchSearchQuery(_elasticClient, new Review(), "movieID", movieidarr, 3);
 
                     if (!res.IsValid)   // if we didn't get the review json back
                     {
@@ -59,14 +61,15 @@ namespace API.services
 
                 if (movielist.Count == 0)
                 {
-                    // get all the movie documents in the db
-                    // returns 10 movies
-                    var res = await MatchAllQuery(_elasticClient, movieIndex, 10);
-                    if (!res.IsValid)  // if we didn't reach the database for the movies
+                    try
                     {
-                        throw new HttpRequestException("Failed to MatchAll movies in BasicSearchService after finding no results using term.");
+                        var res = MatchAllGetMovieList(_elasticClient);
+                        movielist = res.Result;
                     }
-                    movielist = res.Documents.ToList();
+                    catch (Exception ex)
+                    {
+                        throw new Exception(ex.Message);
+                    }
                 }
 
                 // search reviews //
@@ -99,7 +102,24 @@ namespace API.services
             return movieReview;   // return the MR object with status 200
         }
 
+        // get all the movie documents in the db
+        // defaults to 10
+        // returns as List<Movie>
+        public static async Task<List<Movie>> MatchAllGetMovieList(IElasticClient _elasticClient, int? size = 10, string? index = "movies")
+        {
+            List<Movie> movieList = new List<Movie>();  
+            var response = await MatchAllQuery(_elasticClient, index, size);
+            if (!response.IsValid)  // if we didn't reach the database for the movies
+            {
+                throw new HttpRequestException("Failed to get a response in GetAllMovieList.");
+            }
+            movieList = response.Documents.ToList();
+            return movieList;
+        }
 
+        // Ease of access for MatchAll Query
+        // Specify index "movies" or "reviews"
+        // Specify size to determine how many documents are returned
         public static async Task<ISearchResponse<Movie>> MatchAllQuery(IElasticClient _elasticClient, string index, int? size = 10)
         {
             if (_elasticClient is null)
@@ -118,9 +138,14 @@ namespace API.services
                 .Query(q => q
                     .MatchAll())
                 );
+            if (!response.IsValid)  // if we didn't reach the database for the movies
+            {
+                throw new HttpRequestException("Failed to get a response in MatchAllQuery.");
+            }
             return response;
         }
 
+        // Get response for a specific Match query
         public static async Task<ISearchResponse<T>> MatchSearchQuery<T>(
             IElasticClient _elasticClient,
             T typeOBJ,
@@ -166,9 +191,15 @@ namespace API.services
                     .Descending(sortorder)           // this sorts by relevancy if "_score" input
                     )
                 );
+            if (!response.IsValid)  // if we didn't reach the database for the movies
+            {
+                throw new HttpRequestException("Failed to get a response in MatchSearchQuery.");
+            }
             return response;
         }
 
+        // This performs a match query matching the term to the review index
+        // This function also boosts scores with higher usefulness votes
         public static async Task<ISearchResponse<Review>> GetWeightedReviewQuery(
             IElasticClient _elasticClient, 
             Movie movie, 
@@ -196,9 +227,17 @@ namespace API.services
                     //.Descending(f => f.UsefulnessVote)    // this sorts by usefulness votes
                     )
                 );
+            if (!response.IsValid)  // if we didn't reach the database for the movies
+            {
+                throw new HttpRequestException("Failed to get a response in GetWeightedReviewQuery.");
+            }
             return response;
         }
 
+
+        // This just helps to build the entire query.
+        // For future improvement, parameterize every single query method's arguments
+        // movie has to not be an actual movie object, not an empty one
         public static QueryContainer GetWeightedReviewQueryContainer(string term, Movie movie)
         {
             if (term is null)
@@ -226,7 +265,7 @@ namespace API.services
                         .Operator(Operator.Or)
                         .Name($"s?={term}")
                         .AutoGenerateSynonymsPhraseQuery(false)
-                    ) && q2.Term(t => t
+                    ) && q2.Term(t => t         // to match the movie id passed in
                         .Field(f => f.MovieID)
                         .Value(movie.MovieID)
                     )
@@ -234,7 +273,7 @@ namespace API.services
                 .BoostMode(FunctionBoostMode.Multiply)
                 .ScoreMode(FunctionScoreMode.Sum)
                 .Functions(f => f
-                    .Exponential(d => d
+                    .Exponential(d => d         // higher usefulness votes = higher boosting
                         .Field(f => f.UsefulnessVote)
                         .Decay(0.33)
                         .Origin(5000)
