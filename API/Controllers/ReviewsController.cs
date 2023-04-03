@@ -19,7 +19,7 @@ namespace API.Controllers
         private readonly IElasticClient _elasticClient;
 
         // dictionary for fields. key is class attribute (lowercase), value is elastic field name
-        private Dictionary<string, string> ReviewFields = new Dictionary<string, string>(){
+        public Dictionary<string, string> ReviewFields = new Dictionary<string, string>(){
             {"dateofreviews", "Date of Review"},
             {"movieid", "movieID"},
             {"reviewbody", "Review" },
@@ -43,14 +43,21 @@ namespace API.Controllers
         [HttpGet("")] //api/reviews
         public async Task<ActionResult<List<Review>>> GetReviews()
         {
-            var response = await _elasticClient.SearchAsync<Review>(s => s
-                .Index(reviewIndex)
-                .Query(q => q.MatchAll()));
-            // returns all reviews (actually defaults to first 10)
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Review>(s => s
+                                .Index(reviewIndex)
+                                .Query(q => q.MatchAll()));
+                // returns all reviews (actually defaults to first 10)
 
-            return response.Documents.ToList();
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
         }
-        
+
 
         /// <summary>
         /// Can search for an exact match of field to search terms.
@@ -69,8 +76,19 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Review reviewOBJ = new Review();
-            var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => matchService.MatchRequest(eField, reviewOBJ, searchTerms)));
-            return response.Documents.ToList();
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Review>(s => s
+                                .Index(reviewIndex)
+                                .Query(q => matchService
+                                .MatchRequest(eField, reviewOBJ, searchTerms)));
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+
         }
 
 
@@ -83,7 +101,7 @@ namespace API.Controllers
         /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
         [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Review>>> GetMinMax([FromQuery] string field, [FromRoute] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum) 
+        public async Task<ActionResult<List<Review>>> GetMinMax([FromQuery] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
             string eField = ReviewFields["userrating"]; // default
             try
@@ -92,22 +110,20 @@ namespace API.Controllers
             }
             catch (Exception e) { }
 
-            Review reviewOBJ = new Review();
-            if (!string.IsNullOrEmpty(specificNum))
+            if (minNum > maxNum)
             {
-                
-                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => matchService.MatchRequest(eField, reviewOBJ, specificNum)));
-                return response.Documents.ToList();
+                return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
             }
-            else
-            {
-                if (minNum > maxNum)
-                {
-                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
-                }
 
+            Review reviewOBJ = new Review();
+            try
+            {
                 var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => minMaxService.RangeRequest(eField, reviewOBJ, minNum, maxNum)));
-                return response.Documents.ToList();
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
 
@@ -123,12 +139,6 @@ namespace API.Controllers
             int iter = 0;
             List<int> badQueries = new List<int>();
             string eField = "title"; // default
-
-            //FieldTerms test = new FieldTerms();
-            //test.searchTerms = new string[] { "Morbius" };
-            //test.field = "title";
-
-            //fieldTerms.Add(test);
 
             foreach (var query in fieldTerms)
             {
@@ -150,8 +160,15 @@ namespace API.Controllers
             }
 
             Review reviewOBJ = new Review();
-            var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiFieldMatch.MatchRequest(reviewOBJ, fieldTerms)));
-            return response.Documents.ToList();
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiFieldMatch.MatchRequest(reviewOBJ, fieldTerms)));
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
         }
     }
 }

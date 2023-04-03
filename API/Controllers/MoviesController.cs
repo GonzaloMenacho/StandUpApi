@@ -19,7 +19,7 @@ namespace API.Controllers
         private readonly IElasticClient _elasticClient;
 
         // dictionary for fields. key is class attribute (lowercase), value is elastic field name
-        private Dictionary<string, string> MovieFields = new Dictionary<string, string>(){
+        public Dictionary<string, string> MovieFields = new Dictionary<string, string>(){
             {"movieid", "movieID"},
             {"title", "title"},
             {"movieimdbrating", "movieIMDbRating" },
@@ -49,15 +49,21 @@ namespace API.Controllers
         [HttpGet("")] //api/movies
         public async Task<ActionResult<List<Movie>>> GetMovies()
         {
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => q
                     .MatchAll()
                     )
                 );
-            // returns all movies (actually defaults to first 10)
-
-            return response.Documents.ToList();
+                // returns all movies (actually defaults to first 10)
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
         }
 
         /// <summary>
@@ -77,13 +83,21 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => searchByCharRaw
                     .RegexpRequest(eField, movieOBJ, searchTerms)
                     )
                 );
-            return response.Documents.ToList();
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+            
         }
 
         /// <summary>
@@ -103,13 +117,20 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => matchService
                     .MatchRequest(eField, movieOBJ, searchTerms)
                     )
                 );
-            return response.Documents.ToList();
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }        
         }
 
         /// <summary>
@@ -135,13 +156,20 @@ namespace API.Controllers
                 return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
             }
 
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => minMaxService
                     .RangeRequest(eField, movieOBJ, minNum, maxNum)
                     )
                 );
-            return response.Documents.ToList();
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
         }
 
         /// <summary>
@@ -156,12 +184,6 @@ namespace API.Controllers
             int iter = 0;
             List<int> badQueries = new List<int>();
             string eField = "title"; // default
-
-            //FieldTerms test = new FieldTerms();
-            //test.searchTerms = new string[] { "Morbius" };
-            //test.field = "title";
-
-            //fieldTerms.Add(test);
 
             foreach (var query in fieldTerms)
             {
@@ -183,17 +205,24 @@ namespace API.Controllers
             }
 
             Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
-                .Index(movieIndex)
-                .Query(q => multiFieldMatch
-                    .MatchRequest(movieOBJ, fieldTerms)
-                    )
-                );
-            return response.Documents.ToList();
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                                .Index(movieIndex)
+                                .Query(q => multiFieldMatch
+                                    .MatchRequest(movieOBJ, fieldTerms)
+                                    )
+                                );
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
         }
 
 
-        [HttpGet("search")]
+[HttpGet("search")]
         public async Task<ActionResult<MovieReview>> GetMovieReviewFromTerm(string? term = null)
         {
             try
