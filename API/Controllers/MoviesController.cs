@@ -113,15 +113,14 @@ namespace API.Controllers
         }
 
         /// <summary>
-        ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
+        ///  Can read any review field and find all reviews that fit within a passed range on the chosen field.
         /// </summary>
         /// <param name="field">The field within a review to search on.</param>
-        /// <param name="specificNum">The exact number to match on the field</param>
         /// <param name="minNum">The lower bound on the field (inclusive)</param>
         /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
         [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Movie>>> GetMinMax([FromRoute] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
+        public async Task<ActionResult<List<Movie>>> GetMinMax([FromRoute] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
             string eField = "metaScore"; // default
             try
@@ -131,32 +130,18 @@ namespace API.Controllers
             catch (Exception e) { }
 
             Movie movieOBJ = new Movie();
-            if (!string.IsNullOrEmpty(specificNum))
+            if (minNum > maxNum)
             {
-
-                var response = await _elasticClient.SearchAsync<Movie>(s => s
-                    .Index(movieIndex)
-                    .Query(q => matchService
-                        .MatchRequest(eField, movieOBJ, specificNum)
-                        )
-                    );
-                return response.Documents.ToList();
+                return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
             }
-            else
-            {
-                if (minNum > maxNum)
-                {
-                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
-                }
 
-                var response = await _elasticClient.SearchAsync<Movie>(s => s
-                    .Index(movieIndex)
-                    .Query(q => minMaxService
-                        .RangeRequest(eField, movieOBJ, minNum, maxNum)
-                        )
-                    );
-                return response.Documents.ToList();
-            }
+            var response = await _elasticClient.SearchAsync<Movie>(s => s
+                .Index(movieIndex)
+                .Query(q => minMaxService
+                    .RangeRequest(eField, movieOBJ, minNum, maxNum)
+                    )
+                );
+            return response.Documents.ToList();
         }
 
         /// <summary>
@@ -347,7 +332,7 @@ namespace API.Controllers
                     return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
                 }
             }
-            
+
 
             MovieReview moviereviewlist = new MovieReview
             {

@@ -11,7 +11,7 @@ namespace API.services
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
             foreach (var item in searchTerms)
             {
-                orQuery = new MatchQuery() { Field = field, Query = item};
+                orQuery = new MatchQuery() { Field = field, Query = item, Fuzziness = Fuzziness.Auto};
                 queryContainerList.Add(orQuery);
             }
             return queryContainerList.ToArray();
