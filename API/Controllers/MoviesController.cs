@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace API.Controllers
 {
@@ -92,7 +93,7 @@ namespace API.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
-            
+
         }
 
         /// <summary>
@@ -124,7 +125,7 @@ namespace API.Controllers
             catch (Exception e)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
-            }        
+            }
         }
 
         /// <summary>
@@ -164,7 +165,13 @@ namespace API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
-        
+
+        [HttpPost("TestForm")]
+        public async Task<string> TestForm(AdvancedSearchForm form)
+        {
+            return ObjectAnalyzer.printProperties(form);
+        }
+
         /// <summary>
         /// For each object, it will add a query on that object's field, searching on the search terms belonging to that object. It will add all queries to one request.
         /// Each hit will abide by all queries from all objects passed (all search terms on each respective field).
@@ -214,7 +221,7 @@ namespace API.Controllers
         }
 
 
-[HttpGet("search")]
+        [HttpGet("search")]
         public async Task<ActionResult<MovieReview>> GetMovieReviewFromTerm(string? term = null)
         {
             try
