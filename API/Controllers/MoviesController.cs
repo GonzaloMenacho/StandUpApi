@@ -21,14 +21,16 @@ namespace API.Controllers
         private readonly IElasticClient _elasticClient;
 
         // dictionary for fields. key is class attribute (lowercase), value is elastic field name
-        public Dictionary<string, string> MovieFields = new Dictionary<string, string>(){
+        public static Dictionary<string, string> MovieFields = new Dictionary<string, string>(){
             {"movieid", "movieID"},
             {"title", "title"},
+            {"movietitle", "title"},
             {"movieimdbrating", "movieIMDbRating" },
             {"totalratingcount", "totalRatingCount"},
             {"totaluserreviews", "totalUserReviews" },
             {"totalcriticreviews", "totalCriticReviews" },
             {"metascore", "metaScore" },
+            {"criticrating", "metaScore" },
             {"moviegenres", "movieGenres" },
             {"directors", "directors" },
             {"datepublished", "datePublished" },
@@ -173,43 +175,21 @@ namespace API.Controllers
         }
 
         /// <summary>
-        /// For each object, it will add a query on that object's field, searching on the search terms belonging to that object. It will add all queries to one request.
-        /// Each hit will abide by all queries from all objects passed (all search terms on each respective field).
+        /// Uses AdvancedSearchForm to accept multiple criteria for a search on Movie only
         /// </summary>
-        /// <param name="fieldTerms">A list of FieldTerms objects. Each object has a string "field" and an array of strings "search terms." </param>
+        /// <param name="form">An AdvancedSearchForm object that holds all attributes which we can search. 
+        /// If an attribute is left null, we don't search it. 
+        /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
+        /// All strings must be in quotes</param>
         /// <returns></returns>
-        [HttpPost("advancedSearchProto")]
-        public async Task<ActionResult<List<Movie>>> ByTokenPerField([FromBody] List<FieldTerms> fieldTerms)
+        [HttpPost("advSearchMovieV2")]
+        public async Task<ActionResult<List<Movie>>> advSearchMovieV2([FromBody] AdvancedSearchForm form)
         {
-            int iter = 0;
-            List<int> badQueries = new List<int>();
-            string eField = "title"; // default
-
-            foreach (var query in fieldTerms)
-            {
-                try
-                {
-                    eField = MovieFields[query.field.ToLower().Trim()];
-                    query.field = eField;
-                }
-                catch (Exception e)
-                {
-                    badQueries.Add(iter);
-                }
-                iter++;
-            }
-
-            foreach (int index in badQueries)
-            {
-                fieldTerms.RemoveAt(index);
-            }
-
             try
             {
                 var response = await _elasticClient.SearchAsync<Movie>(s => s
                                 .Index(movieIndex)
-                                .Query(q => multiFieldMatch
-                                    .MatchRequest(new Movie(), fieldTerms)
+                                .Query(q => dynamicAdvSearch.SingleIndexRequest(new Movie(), form)
                                     )
                                 );
                 return Ok(response.Documents.ToList());
@@ -220,6 +200,27 @@ namespace API.Controllers
             }
         }
 
+        /// <summary>
+        /// Uses AdvancedSearchForm to accept multiple criteria for a search
+        /// </summary>
+        /// <param name="form">An AdvancedSearchForm object that holds all attributes which we can search. 
+        /// If an attribute is left null, we don't search it. 
+        /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
+        /// All strings must be in quotes</param>
+        /// <returns></returns>
+        [HttpPost("advSearchV2")]
+        public async Task<ActionResult<MovieReview>> advSearchV2([FromBody] AdvancedSearchForm form)
+        {
+            try
+            {
+                var results = await dynamicAdvSearch.BothIndexRequest(_elasticClient, form);
+                return Ok(results.Value);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
 
         [HttpGet("search")]
         public async Task<ActionResult<MovieReview>> GetMovieReviewFromTerm(string? term = null)

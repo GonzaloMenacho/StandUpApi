@@ -19,8 +19,8 @@ namespace API.Controllers
         private readonly IElasticClient _elasticClient;
 
         // dictionary for fields. key is class attribute (lowercase), value is elastic field name
-        public Dictionary<string, string> ReviewFields = new Dictionary<string, string>(){
-            {"dateofreviews", "Date of Review"},
+        public static Dictionary<string, string> ReviewFields = new Dictionary<string, string>(){
+            {"dateofreview", "Date of Review"},
             {"movieid", "movieID"},
             {"reviewbody", "Review" },
             {"reviewtitle", "Review Title"},
@@ -28,6 +28,7 @@ namespace API.Controllers
             {"usefulnessvote", "Usefulness Vote" },
             {"username", "User" },
             {"userrating", "User's Rating out of 10" },
+            {"reviewuserrating", "User's Rating out of 10" }
         };
 
         // create elasticClient field thru injection
@@ -124,40 +125,23 @@ namespace API.Controllers
         }
 
         /// <summary>
-        /// For each object, it will add a query on that object's field, searching on the search terms belonging to that object. It will add all queries to one request.
-        /// Each hit will abide by all queries from all objects passed (all search terms on each respective field).
+        /// Uses AdvancedSearchForm to accept multiple criteria for a search on Review only
         /// </summary>
-        /// <param name="fieldTerms">A list of FieldTerms objects. Each object has a string "field" and an array of strings "search terms." </param>
+        /// <param name="form">An AdvancedSearchForm object that holds all attributes which we can search. 
+        /// If an attribute is left null, we don't search it. 
+        /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
+        /// All strings must be in quotes</param>
         /// <returns></returns>
-        [HttpPost("advancedSearchProto")]
-        public async Task<ActionResult<List<Review>>> advancedSearch([FromBody] List<FieldTerms> fieldTerms)
+        [HttpPost("advSearchReviewV2")]
+        public async Task<ActionResult<List<Review>>> advSearchMovieV2([FromBody] AdvancedSearchForm form)
         {
-            int iter = 0;
-            List<int> badQueries = new List<int>();
-            string eField = "title"; // default
-
-            foreach (var query in fieldTerms)
-            {
-                try
-                {
-                    eField = ReviewFields[query.field.ToLower().Trim()];
-                    query.field = eField;
-                }
-                catch (Exception e)
-                {
-                    badQueries.Add(iter);
-                }
-                iter++;
-            }
-
-            foreach (int index in badQueries)
-            {
-                fieldTerms.RemoveAt(index);
-            }
-
             try
             {
-                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiFieldMatch.MatchRequest(new Review(), fieldTerms)));
+                var response = await _elasticClient.SearchAsync<Review>(s => s
+                                .Index(reviewIndex)
+                                .Query(q => dynamicAdvSearch.SingleIndexRequest(new Review(), form)
+                                    )
+                                );
                 return Ok(response.Documents.ToList());
             }
             catch (Exception e)

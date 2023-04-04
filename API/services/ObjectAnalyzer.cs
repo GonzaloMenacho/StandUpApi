@@ -12,9 +12,7 @@ namespace API.services
             PropertyInfo[] props = type1.GetProperties();
 
             foreach (PropertyInfo p in props)
-
             {
-
                 string pName = p.Name;
                 if (p.PropertyType.IsArray)
                 {
@@ -32,7 +30,6 @@ namespace API.services
                         {
                             arrayElements += pValue.ToString() + ", ";
                         }
-
                     }
                     returnString += System.String.Format("{0} = [{1}]\n", pName, arrayElements);
                 }
