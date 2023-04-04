@@ -168,12 +168,6 @@ namespace API.Controllers
             }
         }
 
-        [HttpPost("TestForm")]
-        public async Task<string> TestForm(AdvancedSearchForm form)
-        {
-            return ObjectAnalyzer.printProperties(form);
-        }
-
         /// <summary>
         /// Uses AdvancedSearchForm to accept multiple criteria for a search on Movie only
         /// </summary>
