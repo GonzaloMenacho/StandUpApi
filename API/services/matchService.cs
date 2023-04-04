@@ -5,13 +5,29 @@ namespace API.services
 {
     public class matchService
     {
-        public static QueryContainer[] MatchListBuilder(string field, string[] searchTerms)
+        public static QueryContainer[] MatchListBuilder(string field, string[] searchTerms, bool fuzz = true)
         {
             QueryContainer orQuery = null;
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
             foreach (var item in searchTerms)
             {
-                orQuery = new MatchQuery() { Field = field, Query = item};
+                if (fuzz)
+                {
+                    orQuery = new MatchQuery()
+                    {
+                        Field = field,
+                        Query = item,
+                        Fuzziness = Fuzziness.Auto
+                    };
+                }
+                else
+                {
+                    orQuery = new MatchQuery()
+                    {
+                        Field = field,
+                        Query = item
+                    };
+                }
                 queryContainerList.Add(orQuery);
             }
             return queryContainerList.ToArray();

@@ -3,10 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Nest;
 using System;
 using System.ComponentModel;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace API.Controllers
 {
@@ -15,18 +17,20 @@ namespace API.Controllers
     public class MoviesController : ControllerBase
     {
 
-        private readonly string movieIndex = "movies";
+        public static readonly string movieIndex = "movies";
         private readonly IElasticClient _elasticClient;
 
         // dictionary for fields. key is class attribute (lowercase), value is elastic field name
-        private Dictionary<string, string> MovieFields = new Dictionary<string, string>(){
+        public static Dictionary<string, string> MovieFields = new Dictionary<string, string>(){
             {"movieid", "movieID"},
             {"title", "title"},
+            {"movietitle", "title"},
             {"movieimdbrating", "movieIMDbRating" },
             {"totalratingcount", "totalRatingCount"},
             {"totaluserreviews", "totalUserReviews" },
             {"totalcriticreviews", "totalCriticReviews" },
             {"metascore", "metaScore" },
+            {"criticrating", "metaScore" },
             {"moviegenres", "movieGenres" },
             {"directors", "directors" },
             {"datepublished", "datePublished" },
@@ -49,15 +53,16 @@ namespace API.Controllers
         [HttpGet("")] //api/movies
         public async Task<ActionResult<List<Movie>>> GetMovies()
         {
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
-                .Index(movieIndex)
-                .Query(q => q
-                    .MatchAll()
-                    )
-                );
-            // returns all movies (actually defaults to first 10)
-
-            return response.Documents.ToList();
+            try
+            {
+                var response = await Get10.GetMovies(_elasticClient);
+                // returns all movies (actually defaults to first 10)
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
         }
 
         /// <summary>
@@ -76,14 +81,21 @@ namespace API.Controllers
             }
             catch (Exception e) { }
 
-            Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => searchByCharRaw
-                    .RegexpRequest(eField, movieOBJ, searchTerms)
+                    .RegexpRequest(eField, new Movie(), searchTerms)
                     )
                 );
-            return response.Documents.ToList();
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+
         }
 
         /// <summary>
@@ -102,26 +114,31 @@ namespace API.Controllers
             }
             catch (Exception e) { }
 
-            Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
+            try
+            {
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => matchService
-                    .MatchRequest(eField, movieOBJ, searchTerms)
+                    .MatchRequest(eField, new Movie(), searchTerms)
                     )
                 );
-            return response.Documents.ToList();
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
         }
 
         /// <summary>
-        ///  Can read any review field and find all reviews that match a specific number OR fit within a passed range on the chosen field.
+        ///  Can read any review field and find all reviews that fit within a passed range on the chosen field.
         /// </summary>
         /// <param name="field">The field within a review to search on.</param>
-        /// <param name="specificNum">The exact number to match on the field</param>
         /// <param name="minNum">The lower bound on the field (inclusive)</param>
         /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
         [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Movie>>> GetMinMax([FromRoute] string field, [FromQuery] string specificNum, [FromQuery] float minNum, [FromQuery] float maxNum)
+        public async Task<ActionResult<List<Movie>>> GetMinMax([FromRoute] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
             string eField = "metaScore"; // default
             try
@@ -130,83 +147,74 @@ namespace API.Controllers
             }
             catch (Exception e) { }
 
-            Movie movieOBJ = new Movie();
-            if (!string.IsNullOrEmpty(specificNum))
+            if (minNum > maxNum)
             {
-
-                var response = await _elasticClient.SearchAsync<Movie>(s => s
-                    .Index(movieIndex)
-                    .Query(q => matchService
-                        .MatchRequest(eField, movieOBJ, specificNum)
-                        )
-                    );
-                return response.Documents.ToList();
+                return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
             }
-            else
-            {
-                if (minNum > maxNum)
-                {
-                    return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
-                }
 
+            try
+            {
                 var response = await _elasticClient.SearchAsync<Movie>(s => s
-                    .Index(movieIndex)
-                    .Query(q => minMaxService
-                        .RangeRequest(eField, movieOBJ, minNum, maxNum)
-                        )
-                    );
-                return response.Documents.ToList();
+                .Index(movieIndex)
+                .Query(q => minMaxService
+                    .RangeRequest(eField, new Movie(), minNum, maxNum)
+                    )
+                );
+                return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
 
         /// <summary>
-        /// For each object, it will add a query on that object's field, searching on the search terms belonging to that object. It will add all queries to one request.
-        /// Each hit will abide by all queries from all objects passed (all search terms on each respective field).
+        /// Uses AdvancedSearchForm to accept multiple criteria for a search on Movie only
         /// </summary>
-        /// <param name="fieldTerms">A list of FieldTerms objects. Each object has a string "field" and an array of strings "search terms." </param>
+        /// <param name="form">An AdvancedSearchForm object that holds all attributes which we can search. 
+        /// If an attribute is left null, we don't search it. 
+        /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
+        /// All strings must be in quotes</param>
         /// <returns></returns>
-        [HttpPost("advancedSearchProto")]
-        public async Task<ActionResult<List<Movie>>> ByTokenPerField([FromBody] List<FieldTerms> fieldTerms)
+        [HttpPost("advSearchMovieV2")]
+        public async Task<ActionResult<List<Movie>>> advSearchMovieV2([FromBody] AdvancedSearchForm form)
         {
-            int iter = 0;
-            List<int> badQueries = new List<int>();
-            string eField = "title"; // default
-
-            //FieldTerms test = new FieldTerms();
-            //test.searchTerms = new string[] { "Morbius" };
-            //test.field = "title";
-
-            //fieldTerms.Add(test);
-
-            foreach (var query in fieldTerms)
+            try
             {
-                try
-                {
-                    eField = MovieFields[query.field.ToLower().Trim()];
-                    query.field = eField;
-                }
-                catch (Exception e)
-                {
-                    badQueries.Add(iter);
-                }
-                iter++;
+                var response = await _elasticClient.SearchAsync<Movie>(s => s
+                                .Index(movieIndex)
+                                .Query(q => dynamicAdvSearch.SingleIndexRequest(new Movie(), form)
+                                    )
+                                );
+                return Ok(response.Documents.ToList());
             }
-
-            foreach (int index in badQueries)
+            catch (Exception e)
             {
-                fieldTerms.RemoveAt(index);
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
-
-            Movie movieOBJ = new Movie();
-            var response = await _elasticClient.SearchAsync<Movie>(s => s
-                .Index(movieIndex)
-                .Query(q => multiFieldMatch
-                    .MatchRequest(movieOBJ, fieldTerms)
-                    )
-                );
-            return response.Documents.ToList();
         }
 
+        /// <summary>
+        /// Uses AdvancedSearchForm to accept multiple criteria for a search
+        /// </summary>
+        /// <param name="form">An AdvancedSearchForm object that holds all attributes which we can search. 
+        /// If an attribute is left null, we don't search it. 
+        /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
+        /// All strings must be in quotes</param>
+        /// <returns></returns>
+        [HttpPost("advSearchV2")]
+        public async Task<ActionResult<MovieReview>> advSearchV2([FromBody] AdvancedSearchForm form)
+        {
+            try
+            {
+                var results = await dynamicAdvSearch.BothIndexRequest(_elasticClient, form);
+                return Ok(results.Value);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
 
         [HttpGet("search")]
         public async Task<ActionResult<MovieReview>> GetMovieReviewFromTerm(string? term = null)
@@ -234,11 +242,10 @@ namespace API.Controllers
             List<Movie> movielist = new List<Movie>();
             try
             {
-                Movie movieobj = new Movie();
                 var response = await _elasticClient.SearchAsync<Movie>(s => s
                     .Index(movieIndex)
                     .Query(q =>
-                        searchByCharRaw.RegexpRequest("title", movieobj, title)
+                        searchByCharRaw.RegexpRequest("title", new Movie(), title)
                         )
                     );
                 if (!response.IsValid)   // if we didn't get the review json back
@@ -298,7 +305,7 @@ namespace API.Controllers
                 try
                 {
                     var res = await _elasticClient.SearchAsync<Review>(s => s
-                        .Index("reviews")
+                        .Index(ReviewsController.reviewIndex)
                         .Query(q => q
                             .Bool(b => b
                                 .Should(m => m
@@ -347,7 +354,7 @@ namespace API.Controllers
                     return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
                 }
             }
-            
+
 
             MovieReview moviereviewlist = new MovieReview
             {
