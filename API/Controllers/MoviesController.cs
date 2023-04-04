@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Nest;
 using System;
 using System.ComponentModel;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,7 +16,7 @@ namespace API.Controllers
     public class MoviesController : ControllerBase
     {
 
-        private readonly string movieIndex = "movies";
+        public static readonly string movieIndex = "movies";
         private readonly IElasticClient _elasticClient;
 
         // dictionary for fields. key is class attribute (lowercase), value is elastic field name
@@ -51,12 +52,7 @@ namespace API.Controllers
         {
             try
             {
-                var response = await _elasticClient.SearchAsync<Movie>(s => s
-                .Index(movieIndex)
-                .Query(q => q
-                    .MatchAll()
-                    )
-                );
+                var response = await Get10.GetMovies(_elasticClient);
                 // returns all movies (actually defaults to first 10)
                 return Ok(response.Documents.ToList());
             }
@@ -82,13 +78,12 @@ namespace API.Controllers
             }
             catch (Exception e) { }
 
-            Movie movieOBJ = new Movie();
             try
             {
                 var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => searchByCharRaw
-                    .RegexpRequest(eField, movieOBJ, searchTerms)
+                    .RegexpRequest(eField, new Movie(), searchTerms)
                     )
                 );
                 return Ok(response.Documents.ToList());
@@ -116,13 +111,12 @@ namespace API.Controllers
             }
             catch (Exception e) { }
 
-            Movie movieOBJ = new Movie();
             try
             {
                 var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => matchService
-                    .MatchRequest(eField, movieOBJ, searchTerms)
+                    .MatchRequest(eField, new Movie(), searchTerms)
                     )
                 );
                 return Ok(response.Documents.ToList());
@@ -150,7 +144,6 @@ namespace API.Controllers
             }
             catch (Exception e) { }
 
-            Movie movieOBJ = new Movie();
             if (minNum > maxNum)
             {
                 return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
@@ -161,7 +154,7 @@ namespace API.Controllers
                 var response = await _elasticClient.SearchAsync<Movie>(s => s
                 .Index(movieIndex)
                 .Query(q => minMaxService
-                    .RangeRequest(eField, movieOBJ, minNum, maxNum)
+                    .RangeRequest(eField, new Movie(), minNum, maxNum)
                     )
                 );
                 return Ok(response.Documents.ToList());
@@ -171,7 +164,7 @@ namespace API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
-
+        
         /// <summary>
         /// For each object, it will add a query on that object's field, searching on the search terms belonging to that object. It will add all queries to one request.
         /// Each hit will abide by all queries from all objects passed (all search terms on each respective field).
@@ -204,13 +197,12 @@ namespace API.Controllers
                 fieldTerms.RemoveAt(index);
             }
 
-            Movie movieOBJ = new Movie();
             try
             {
                 var response = await _elasticClient.SearchAsync<Movie>(s => s
                                 .Index(movieIndex)
                                 .Query(q => multiFieldMatch
-                                    .MatchRequest(movieOBJ, fieldTerms)
+                                    .MatchRequest(new Movie(), fieldTerms)
                                     )
                                 );
                 return Ok(response.Documents.ToList());
@@ -248,11 +240,10 @@ namespace API.Controllers
             List<Movie> movielist = new List<Movie>();
             try
             {
-                Movie movieobj = new Movie();
                 var response = await _elasticClient.SearchAsync<Movie>(s => s
                     .Index(movieIndex)
                     .Query(q =>
-                        searchByCharRaw.RegexpRequest("title", movieobj, title)
+                        searchByCharRaw.RegexpRequest("title", new Movie(), title)
                         )
                     );
                 if (!response.IsValid)   // if we didn't get the review json back
@@ -312,7 +303,7 @@ namespace API.Controllers
                 try
                 {
                     var res = await _elasticClient.SearchAsync<Review>(s => s
-                        .Index("reviews")
+                        .Index(ReviewsController.reviewIndex)
                         .Query(q => q
                             .Bool(b => b
                                 .Should(m => m

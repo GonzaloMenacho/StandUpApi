@@ -15,7 +15,7 @@ namespace API.Controllers
     public class ReviewsController : ControllerBase
     {
 
-        private readonly string reviewIndex = "reviews";
+        public static readonly string reviewIndex = "reviews";
         private readonly IElasticClient _elasticClient;
 
         // dictionary for fields. key is class attribute (lowercase), value is elastic field name
@@ -45,9 +45,7 @@ namespace API.Controllers
         {
             try
             {
-                var response = await _elasticClient.SearchAsync<Review>(s => s
-                                .Index(reviewIndex)
-                                .Query(q => q.MatchAll()));
+                var response = await Get10.GetReviews(_elasticClient);
                 // returns all reviews (actually defaults to first 10)
 
                 return Ok(response.Documents.ToList());
@@ -75,13 +73,12 @@ namespace API.Controllers
             }
             catch (Exception e) { }
 
-            Review reviewOBJ = new Review();
             try
             {
                 var response = await _elasticClient.SearchAsync<Review>(s => s
                                 .Index(reviewIndex)
                                 .Query(q => matchService
-                                .MatchRequest(eField, reviewOBJ, searchTerms)));
+                                .MatchRequest(eField, new Review(), searchTerms)));
                 return Ok(response.Documents.ToList());
             }
             catch (Exception e)
@@ -101,7 +98,7 @@ namespace API.Controllers
         /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
         [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Review>>> GetMinMax([FromQuery] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
+        public async Task<ActionResult<List<Review>>> GetMinMax([FromRoute] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
             string eField = ReviewFields["userrating"]; // default
             try
@@ -115,10 +112,9 @@ namespace API.Controllers
                 return BadRequest("The 'minRating' parameter must be less than 'maxRating'");
             }
 
-            Review reviewOBJ = new Review();
             try
             {
-                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => minMaxService.RangeRequest(eField, reviewOBJ, minNum, maxNum)));
+                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => minMaxService.RangeRequest(eField, new Review(), minNum, maxNum)));
                 return Ok(response.Documents.ToList());
             }
             catch (Exception e)
@@ -159,10 +155,9 @@ namespace API.Controllers
                 fieldTerms.RemoveAt(index);
             }
 
-            Review reviewOBJ = new Review();
             try
             {
-                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiFieldMatch.MatchRequest(reviewOBJ, fieldTerms)));
+                var response = await _elasticClient.SearchAsync<Review>(s => s.Index(reviewIndex).Query(q => multiFieldMatch.MatchRequest(new Review(), fieldTerms)));
                 return Ok(response.Documents.ToList());
             }
             catch (Exception e)
