@@ -32,18 +32,21 @@ namespace API.services
                     try
                     {
                         field = MoviesController.MovieFields[field.ToLower().Trim()];
-
-                        // movieID on the form is a review attribute. this means we are entering review attributes which we can ignore for movie searches
-                        if (searchingMovies && field == "movieID")
+   
+                        if (searchingMovies && field == "movieID") // movieID on the form is a review attribute. this means we are entering review attributes which we can ignore for movie searches
                         { break; }
-                        if (!searchingMovies) // i.e., we only want to do review adv search
+                        else if (!searchingMovies && field == "movieID") // i.e., we only want to do review adv search
                         {
-                            p.SetValue(form, null);
+                            throw new Exception();
+                        }
+                        else if (!searchingMovies) // we are in review search and was given a form with movie attribute filled
+                        {
+                            p.SetValue(form, null); // get rid of the irrelevant info on the form
                         }
                     }
                     catch (Exception e)
                     {
-                        if (searchingMovies)
+                        if (searchingMovies) // we are in movie search about to analyze review attributes
                         { break; }
                         try
                         {
