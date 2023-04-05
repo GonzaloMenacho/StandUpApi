@@ -203,7 +203,7 @@ namespace API.Controllers
         /// All strings must be in quotes</param>
         /// <returns></returns>
         [HttpPost("advanced-search-all")]
-        public async Task<ActionResult<MovieReview>> advSearchV2([FromBody] AdvancedSearchForm form)
+        public async Task<ActionResult<MovieReview>> advSearch([FromBody] AdvancedSearchForm form)
         {
             try
             {
