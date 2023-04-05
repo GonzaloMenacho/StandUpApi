@@ -32,14 +32,21 @@ namespace API.services
                     try
                     {
                         field = MoviesController.MovieFields[field.ToLower().Trim()];
-
-                        // movieID on the form is a review attribute. this means we are entering review attributes which we can ignore for movie searches
-                        if (searchingMovies && field == "movieID")
+   
+                        if (searchingMovies && field == "movieID") // movieID on the form is a review attribute. this means we are entering review attributes which we can ignore for movie searches
                         { break; }
+                        else if (!searchingMovies && field == "movieID") // i.e., we only want to do review adv search
+                        {
+                            throw new Exception();
+                        }
+                        else if (!searchingMovies) // we are in review search and was given a form with movie attribute filled
+                        {
+                            p.SetValue(form, null); // get rid of the irrelevant info on the form
+                        }
                     }
                     catch (Exception e)
                     {
-                        if (searchingMovies)
+                        if (searchingMovies) // we are in movie search about to analyze review attributes
                         { break; }
                         try
                         {
@@ -51,50 +58,53 @@ namespace API.services
                         }
                     }
 
-                    // Begin parsing properties and building queries
-                    string[] terms = { "" };
-                    //Type propType = p.GetType();
-                    if (p.GetValue(form) is string)
+                    if (p.GetValue(form) != null)
                     {
-                        terms[0] = (string)p.GetValue(form);
-                    }
-
-                    if (p.PropertyType.IsArray) //
-                    {
-                        Array a = (Array)p.GetValue(form);
-                        if (a.GetValue(0) is float)  // numeric array == min max
+                        // Begin parsing properties and building queries
+                        string[] terms = { "" };
+                        //Type propType = p.GetType();
+                        if (p.GetValue(form) is string)
                         {
-                            queryContainerList.AddRange(minMaxService.RangeQueryBuilder(field, (float)a.GetValue(0), (float)a.GetValue(1)));
+                            terms[0] = (string)p.GetValue(form);
                         }
-                        else // array of strings? 
-                        {
-                            string arrayElements = "";
 
-                            for (int i = 0; i < a.Length; i++)
+                        if (p.PropertyType.IsArray) //
+                        {
+                            Array a = (Array)p.GetValue(form);
+                            if (a.GetValue(0) is float)  // numeric array == min max
                             {
-                                object pValue = a.GetValue(i);
-                                arrayElements += pValue.ToString() + " ";
+                                queryContainerList.AddRange(minMaxService.RangeQueryBuilder(field, (float)a.GetValue(0), (float)a.GetValue(1)));
                             }
-                            string[] s = { arrayElements };
-                            queryContainerList.AddRange(matchService.MatchListBuilder(field, s, false));
-                        }
-                    }
-                    else if (field == "title")
-                    {
-                        queryContainerList.AddRange(searchByCharRaw.RegexpListBuilder(field, terms));
-                    }
-                    else if (field == "movieID" && !searchingMovies) // movieID is a fucking int in the reviewIndex specifically
-                    {
-                        float movieIDNum = float.Parse(terms[0], CultureInfo.InvariantCulture.NumberFormat);
-                        queryContainerList.AddRange(minMaxService.RangeQueryBuilder(field, movieIDNum, movieIDNum));
-                    }
-                    else
-                    {
-                        queryContainerList.AddRange(matchService.MatchListBuilder(field, terms, false));
-                    }
+                            else // array of strings? 
+                            {
+                                string arrayElements = "";
 
-                    // to make things smoother when the same form is ran through this twice for different indexes
-                    p.SetValue(form, null);
+                                for (int i = 0; i < a.Length; i++)
+                                {
+                                    object pValue = a.GetValue(i);
+                                    arrayElements += pValue.ToString() + " ";
+                                }
+                                string[] s = { arrayElements };
+                                queryContainerList.AddRange(matchService.MatchListBuilder(field, s, false));
+                            }
+                        }
+                        else if (field == "title")
+                        {
+                            queryContainerList.AddRange(searchByCharRaw.RegexpListBuilder(field, terms));
+                        }
+                        else if (field == "movieID" && !searchingMovies) // movieID is a fucking int in the reviewIndex specifically
+                        {
+                            float movieIDNum = float.Parse(terms[0], CultureInfo.InvariantCulture.NumberFormat);
+                            queryContainerList.AddRange(minMaxService.RangeQueryBuilder(field, movieIDNum, movieIDNum));
+                        }
+                        else
+                        {
+                            queryContainerList.AddRange(matchService.MatchListBuilder(field, terms, false));
+                        }
+
+                        // to make things smoother when the same form is ran through this twice for different indexes
+                        p.SetValue(form, null);
+                    }
                 }
             }
             return queryContainerList.ToArray();

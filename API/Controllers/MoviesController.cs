@@ -176,7 +176,7 @@ namespace API.Controllers
         /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
         /// All strings must be in quotes</param>
         /// <returns></returns>
-        [HttpPost("advSearchMovieV2")]
+        [HttpPost("advanced-search-movies")]
         public async Task<ActionResult<List<Movie>>> advSearchMovieV2([FromBody] AdvancedSearchForm form)
         {
             try
@@ -202,8 +202,8 @@ namespace API.Controllers
         /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
         /// All strings must be in quotes</param>
         /// <returns></returns>
-        [HttpPost("advSearchV2")]
-        public async Task<ActionResult<MovieReview>> advSearchV2([FromBody] AdvancedSearchForm form)
+        [HttpPost("advanced-search-all")]
+        public async Task<ActionResult<MovieReview>> advSearch([FromBody] AdvancedSearchForm form)
         {
             try
             {
