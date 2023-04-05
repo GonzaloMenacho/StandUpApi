@@ -1,7 +1,7 @@
 ﻿using Nest;
 using System.ComponentModel;
 
-namespace API.services
+namespace API
 {
     public class AdvancedSearchForm
     {
