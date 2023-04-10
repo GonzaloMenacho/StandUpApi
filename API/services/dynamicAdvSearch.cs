@@ -11,9 +11,21 @@ namespace API.services
     // Ideas: search on the movie criteria first, then add a query on the reviews that says "grab only reviews from these movieIDs"
     public class dynamicAdvSearch
     {
-        private static QueryContainer[] QueryListBuilder(AdvancedSearchForm form, bool searchingMovies)
+
+        public static QueryContainer SingleIndexRequest<T>(T typeOBJ, AdvancedSearchForm form) where T : class
         {
-            //QueryContainer orQuery = null;
+            bool searchingMovies;
+            if (typeOBJ is Movie)
+            {
+                searchingMovies = true;
+            }
+            else
+            {
+                searchingMovies = false;
+            }
+
+            //  QUERY LIST BUILDER
+            // no longer its own function so we can decide when to use should or must per field
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
             Type classType = form.GetType();
             PropertyInfo[] props = classType.GetProperties();
@@ -32,7 +44,7 @@ namespace API.services
                     try
                     {
                         field = MoviesController.MovieFields[field.ToLower().Trim()];
-   
+
                         if (searchingMovies && field == "movieID") // movieID on the form is a review attribute. this means we are entering review attributes which we can ignore for movie searches
                         { break; }
                         else if (!searchingMovies && field == "movieID") // i.e., we only want to do review adv search
@@ -73,7 +85,9 @@ namespace API.services
                             Array a = (Array)p.GetValue(form);
                             if (a.GetValue(0) is float)  // numeric array == min max
                             {
-                                queryContainerList.AddRange(minMaxService.RangeQueryBuilder(field, (float)a.GetValue(0), (float)a.GetValue(1)));
+                                var q = new QueryContainerDescriptor<T>().Bool(
+                                            b => b.Must(minMaxService.RangeQueryBuilder(field, (float)a.GetValue(0), (float)a.GetValue(1))));
+                                queryContainerList.Add(q);
                             }
                             else // array of strings? 
                             {
@@ -85,21 +99,35 @@ namespace API.services
                                     arrayElements += pValue.ToString() + " ";
                                 }
                                 string[] s = { arrayElements };
-                                queryContainerList.AddRange(matchService.MatchListBuilder(field, s, false));
+                                var q = new QueryContainerDescriptor<T>().Bool(
+                                            b => b.Must(matchService.MatchListBuilder(field, s, false)));
+                                queryContainerList.Add(q);
                             }
                         }
                         else if (field == "title")
                         {
-                            queryContainerList.AddRange(searchByCharRaw.RegexpListBuilder(field, terms));
+                            var q = new QueryContainerDescriptor<T>().Bool(
+                                            b => b.Must(searchByCharRaw.RegexpListBuilder(field, terms)));
+                            queryContainerList.Add(q);
                         }
                         else if (field == "movieID" && !searchingMovies) // movieID is a fucking int in the reviewIndex specifically
                         {
                             float movieIDNum = float.Parse(terms[0], CultureInfo.InvariantCulture.NumberFormat);
-                            queryContainerList.AddRange(minMaxService.RangeQueryBuilder(field, movieIDNum, movieIDNum));
+                            var q = new QueryContainerDescriptor<T>().Bool(
+                                             b => b.Must((minMaxService.RangeQueryBuilder(field, movieIDNum, movieIDNum))));
+                            queryContainerList.Add(q);
+                        }
+                        else if (field == "Review Title" || field == "Review")
+                        {
+                            var q = new QueryContainerDescriptor<T>().Bool(
+                                            b => b.Should(matchService.MatchListBuilder(field, terms)));
+                            queryContainerList.Add(q);
                         }
                         else
                         {
-                            queryContainerList.AddRange(matchService.MatchListBuilder(field, terms, false));
+                            var q = new QueryContainerDescriptor<T>().Bool(
+                                            b => b.Must(matchService.MatchListBuilder(field, terms, false)));
+                            queryContainerList.Add(q);
                         }
 
                         // to make things smoother when the same form is ran through this twice for different indexes
@@ -107,35 +135,13 @@ namespace API.services
                     }
                 }
             }
-            if (queryContainerList.Count() == 0) {
+            if (queryContainerList.Count() == 0)
+            {
                 return null;
             }
-            return queryContainerList.ToArray();
-        }
-
-        public static QueryContainer SingleIndexRequest<T>(T typeOBJ, AdvancedSearchForm form) where T : class
-        {
-            bool searchingMovie;
-            if (typeOBJ is Movie)
-            {
-                searchingMovie = true;
-            }
-            else
-            {
-                searchingMovie = false;
-            }
-
-            var queryList = QueryListBuilder(form, searchingMovie);
-
-            if (queryList == null) {
-                return null;
-            }
-
-            // to know what model to use, we need to be passed a class object of that model. Might be a better way?
-            var q = new QueryContainerDescriptor<T>().Bool(
-                b => b.Must(
-                    queryList));
-            return q;
+            var finalq = new QueryContainerDescriptor<T>().Bool(
+                b => b.Should(queryContainerList.ToArray()));
+            return finalq;
         }
 
         public async static Task<ActionResult<MovieReview>> BothIndexRequest(IElasticClient _elasticClient, AdvancedSearchForm form)
