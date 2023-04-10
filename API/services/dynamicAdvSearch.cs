@@ -142,6 +142,10 @@ namespace API.services
         {
             List<Movie> movieList = new List<Movie>();
             List<List<Review>> reviewList = new List<List<Review>>();
+            if (ObjectAnalyzer.IsAllNullOrEmpty(form))
+            {
+                form.MovieTitle = ""; // returns all movies
+            }
 
             var query = dynamicAdvSearch.SingleIndexRequest(new Movie(), form);
             if (query != null)
