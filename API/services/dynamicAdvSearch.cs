@@ -107,6 +107,9 @@ namespace API.services
                     }
                 }
             }
+            if (queryContainerList.Count() == 0) {
+                return null;
+            }
             return queryContainerList.ToArray();
         }
 
@@ -122,10 +125,16 @@ namespace API.services
                 searchingMovie = false;
             }
 
+            var queryList = QueryListBuilder(form, searchingMovie);
+
+            if (queryList == null) {
+                return null;
+            }
+
             // to know what model to use, we need to be passed a class object of that model. Might be a better way?
             var q = new QueryContainerDescriptor<T>().Bool(
                 b => b.Must(
-                    QueryListBuilder(form, searchingMovie)));
+                    queryList));
             return q;
         }
 
@@ -133,38 +142,111 @@ namespace API.services
         {
             List<Movie> movieList = new List<Movie>();
             List<List<Review>> reviewList = new List<List<Review>>();
-            var movieRes = await _elasticClient.SearchAsync<Movie>(s => s
-                            .Index(MoviesController.movieIndex)
-                            .Query(q => dynamicAdvSearch.SingleIndexRequest(new Movie(), form)
-                                )
-                            );
-            movieList = movieRes.Documents.ToList();
-            foreach (Movie movie in movieList)
+
+            var query = dynamicAdvSearch.SingleIndexRequest(new Movie(), form);
+            if (query != null)
             {
-                form.movieID = movie.MovieID.ToString();
-                var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
-                                .Index(ReviewsController.reviewIndex)
-                                .Size(3)
-                                .Query(q => q
-                                    .FunctionScore(fs => fs
-                                        .Query(q2 => dynamicAdvSearch
-                                            .SingleIndexRequest(new Review(), form))
-                                                .BoostMode(FunctionBoostMode.Multiply)
-                                                .ScoreMode(FunctionScoreMode.Sum)
-                                                .Functions(f => f
-                                                    .Exponential(d => d         // higher usefulness votes = higher boosting
-                                                        .Field(f => f.UsefulnessVote)
-                                                        .Decay(0.33)
-                                                        .Origin(5000)
-                                                        .Scale(5)
-                                                        .Offset(1)
-                                                        .Weight(0.1)
+                var movieRes = await _elasticClient.SearchAsync<Movie>(s => s
+                                .Index(MoviesController.movieIndex)
+                                .Query(q => query
+                                    )
+                                );
+                movieList = movieRes.Documents.ToList();
+                foreach (Movie movie in movieList)
+                {
+                    form.movieID = movie.MovieID.ToString();
+                    var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
+                                    .Index(ReviewsController.reviewIndex)
+                                    .Size(3)
+                                    .Query(q => q
+                                        .FunctionScore(fs => fs
+                                            .Query(q2 => dynamicAdvSearch
+                                                .SingleIndexRequest(new Review(), form))
+                                                    .BoostMode(FunctionBoostMode.Multiply)
+                                                    .ScoreMode(FunctionScoreMode.Sum)
+                                                    .Functions(f => f
+                                                        .Exponential(d => d         // higher usefulness votes = higher boosting
+                                                            .Field(f => f.UsefulnessVote)
+                                                            .Decay(0.33)
+                                                            .Origin(5000)
+                                                            .Scale(5)
+                                                            .Offset(1)
+                                                            .Weight(0.1)
+                                                    )
                                                 )
                                             )
                                         )
-                                    )
-                                );
-                reviewList.Add(reviewRes.Documents.ToList());
+                                    );
+                    reviewList.Add(reviewRes.Documents.ToList());
+                }
+            } else         // no movie criteria was searched, search on reviews first, then find the movies
+            {
+                //TODO: cant figure out how to write a query that returns 3 reviews per unique movieID
+                // ultra slow search, dont worry about it, trust the plan etc
+                var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
+                                    .Index(ReviewsController.reviewIndex)
+                                    .Size(5000)
+                                    .Query(q => q
+                                        .FunctionScore(fs => fs
+                                            .Query(q2 => dynamicAdvSearch
+                                                .SingleIndexRequest(new Review(), form))
+                                                    .BoostMode(FunctionBoostMode.Multiply)
+                                                    .ScoreMode(FunctionScoreMode.Sum)
+                                                    .Functions(f => f
+                                                        .Exponential(d => d         // higher usefulness votes = higher boosting
+                                                            .Field(f => f.UsefulnessVote)
+                                                            .Decay(0.33)
+                                                            .Origin(5000)
+                                                            .Scale(5)
+                                                            .Offset(1)
+                                                            .Weight(0.1)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    );
+                List<string> knownIDs = new List<string>();
+                foreach (Review review in reviewRes.Documents.ToList())
+                {
+                    if(!knownIDs.Contains(review.MovieID.ToString())){
+                        knownIDs.Add(review.MovieID.ToString());
+                        List<Review> thisMovie = new List<Review>();
+                        thisMovie.Add(review);
+                        reviewList.Add(thisMovie);
+                    }
+                    else
+                    {
+                        foreach (List<Review> movieRevs in reviewList)
+                        {
+                            if (movieRevs[0].MovieID == review.MovieID && movieRevs.Count < 3)
+                            {
+                                movieRevs.Add(review);
+                            }
+                        }
+                    }
+                }
+
+                var movieRes = await _elasticClient.SearchAsync<Movie>(s => s
+                .Index(MoviesController.movieIndex)
+                .Query(q => matchService
+                    .MatchRequest("movieID", new Movie(), knownIDs.ToArray())
+                    )
+                );
+                movieList = movieRes.Documents.ToList();
+                var sortedMovieList = new List<Movie>();
+
+                // resort movie list to match the relevancy of the reviews
+                foreach(string ID in knownIDs)
+                {
+                    foreach(Movie movie in movieList)
+                    {
+                        if (movie.MovieID.ToString() == ID)
+                        {
+                            sortedMovieList.Add(movie);
+                        }
+                    }
+                }
+                movieList = sortedMovieList;
             }
             MovieReview results = new MovieReview();
             results.MovieDocuments = movieList;
