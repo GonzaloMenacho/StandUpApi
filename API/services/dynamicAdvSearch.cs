@@ -139,6 +139,7 @@ namespace API.services
             {
                 return null;
             }
+
             var finalq = new QueryContainerDescriptor<T>().Bool(
                 b => b.Should(queryContainerList.ToArray()));
             return finalq;
