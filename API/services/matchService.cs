@@ -11,6 +11,7 @@ namespace API.services
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
             foreach (var item in searchTerms)
             {
+                if (item.Length <= 3) { fuzz = false;}
                 if (fuzz)
                 {
                     orQuery = new MatchQuery()

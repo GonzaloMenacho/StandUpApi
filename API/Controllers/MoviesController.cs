@@ -202,7 +202,7 @@ namespace API.Controllers
         /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
         /// All strings must be in quotes</param>
         /// <returns></returns>
-        [HttpPost("advanced-search-all")]
+        [HttpPost("advanced-search")]
         public async Task<ActionResult<MovieReview>> advSearch([FromBody] AdvancedSearchForm form)
         {
             try

@@ -149,6 +149,30 @@ namespace API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
+
+        public class TestForm
+        {
+            public string name { get; set; }
+            public string email { get; set; }
+            public string mobileNumber { get; set; }
+        }
+
+        [HttpPost("test-form")]
+        public async Task<ActionResult<TestForm>> testformroute([FromBody] TestForm form)
+        {
+            try
+            {
+                Console.WriteLine("in route");
+                Console.WriteLine(form.name);
+                Console.WriteLine(form.email);
+                Console.WriteLine(form.mobileNumber);
+                return Ok(form);
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
     }
 }
 
