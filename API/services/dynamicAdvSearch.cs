@@ -143,7 +143,7 @@ namespace API.services
             }
 
             var finalq = new QueryContainerDescriptor<T>().Bool(
-                b => b.Should(queryContainerList.ToArray()));
+                b => b.Must(queryContainerList.ToArray()));
             return finalq;
         }
 
@@ -167,6 +167,9 @@ namespace API.services
                 movieList = movieRes.Documents.ToList();
                 foreach (Movie movie in movieList)
                 {
+                    // ideally should break these out into query containers, then do 1 request
+                    // but how do we guarentee only 3 reviews per movie?
+                    // nested query of multiple size 3 queries?
                     form.movieID = movie.MovieID.ToString();
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
@@ -196,6 +199,13 @@ namespace API.services
             {
                 //TODO: cant figure out how to write a query that returns 3 reviews per unique movieID
                 // ultra slow search, dont worry about it, trust the plan etc
+                /* Proposed Algo:
+                 * if movie query null, get all movies
+                 * for each movieID, make the review query with size 3. 
+                 * for each movieID that returns 0 hits, remove that movie from the list
+                 * end result should be only the movies with hits
+                 * but not sorted by relevancy of those hits (Sad!)
+                 */
                 var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
                                     .Size(5000)
@@ -218,6 +228,55 @@ namespace API.services
                                             )
                                         )
                                     );
+                /*
+                 * var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
+                                    .Index(ReviewsController.reviewIndex)
+                                    .Size(30)
+                                    .Query(q => q
+                                        .FunctionScore(fs => fs
+                                            .Query(q2 => dynamicAdvSearch
+                                                .SingleIndexRequest(new Review(), form))
+                                                    .BoostMode(FunctionBoostMode.Multiply)
+                                                    .ScoreMode(FunctionScoreMode.Sum)
+                                                    .Functions(f => f
+                                                        .Exponential(d => d         // higher usefulness votes = higher boosting
+                                                            .Field(f => f.UsefulnessVote)
+                                                            .Decay(0.33)
+                                                            .Origin(5000)
+                                                            .Scale(5)
+                                                            .Offset(1)
+                                                            .Weight(0.1)
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    .Collapse(c => c
+                                        .Field(f=>f.MovieID)
+                                        .InnerHits(i => i
+                                            .Name("3perMovie")
+                                            .Size(3)
+                                            .Source(s=>s
+                                                .Includes(i=>i 
+                                                    .Field(f => f.MovieID)
+                                                    )
+                                                )
+                                            )
+                                        .MaxConcurrentGroupSearches(10)
+                                        )
+                                    );
+                /*
+                 * .Aggregations(agg=>agg
+                                    .Terms("movieID", t=>t
+                                        .Field(f=>f.MovieID)
+                                        .Size(10)
+                                        ) 
+                                    )
+                                    .Aggregations(agg2 => agg2
+                                        .TopHits("3perMovie", th=>th
+                                            .Size(3)
+                                            )
+                                        )
+                 * */
                 List<string> knownIDs = new List<string>();
                 foreach (Review review in reviewRes.Documents.ToList())
                 {
