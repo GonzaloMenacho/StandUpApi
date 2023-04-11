@@ -1,6 +1,8 @@
 ﻿using API.Controllers;
 using API.services;
 using Microsoft.AspNetCore.Mvc;
+using NuGet.Frameworks;
+
 namespace NUnitTesting
 {
     [TestFixture]
@@ -20,7 +22,6 @@ namespace NUnitTesting
             var response = await _movieController.GetMovieReviewFromTerm(term);
 
             // Assert
-
             // Assert we have a response.
             Assert.NotNull(response.Result);
 
@@ -51,6 +52,48 @@ namespace NUnitTesting
             if (movies.MovieDocuments.Count() < 10)
             {
                 Assert.That(movies.MovieDocuments.Count(), Is.EqualTo(movies.ReviewDocuments.Count()));
+            }
+            
+        }
+
+        [Test]
+        [TestCase("")]
+        [TestCase("avengers")]
+        [TestCase("aven")]
+        [TestCase("good movie")]
+        [TestCase("asovuboaiwba09")]
+        [TestCase("{}!@sdoih';';......-=-=:::")]
+        [TestCase(")!@*)&%)&@Morbius)!&@)&(#@&#%(")]
+        public async Task TestBasicSearchContentType(string? term)
+        {
+            // Act
+            var response = await _movieController.GetMovieReviewFromTerm(term);
+
+            // Assert
+            Assert.IsInstanceOf<MovieReview>(((OkObjectResult)response.Result).Value);
+
+        }
+
+
+        [Test]
+        [TestCase("")]
+        [TestCase("avengers")]
+        [TestCase("aven")]
+        [TestCase("good movie")]
+        [TestCase("asovuboaiwba09")]
+        [TestCase("{}!@sdoih';';......-=-=:::")]
+        [TestCase(")!@*)&%)&@Morbius)!&@)&(#@&#%(")]
+        public async Task TestBasicSearchMovieIDCorrelation(string? term)
+        {
+            // Act
+            var response = await _movieController.GetMovieReviewFromTerm(term);
+
+            // Assert
+            var movies = ((OkObjectResult)response.Result).Value as MovieReview;
+            for (int i = 0; i < movies.MovieDocuments.Count(); i++)
+            {
+                Assert.That(movies.MovieDocuments[i].MovieID,
+                    Is.EqualTo(movies.ReviewDocuments[i][0].MovieID));
             }
         }
     }
