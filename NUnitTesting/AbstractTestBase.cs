@@ -1,11 +1,3 @@
-using API;
-using API.Controllers;
-using API.services;
-using Elasticsearch.Net;
-using Microsoft.AspNetCore.Mvc;
-using Nest;
-using System.Net;
-
 namespace NUnitTesting
 {
     [TestFixture]
