@@ -3,8 +3,8 @@ namespace NUnitTesting
     internal class MovieMinMaxUnitTest : AbstractTestBase
     {
         [Test]
-        [TestCase("movieIMDbRating", 1.3f, 8.6f)]
-        [TestCase("totalRatingCount", 100000f, 2000000f)]
+        [TestCase("movieIMDbRating", 1.3, 8.6)]
+        [TestCase("totalRatingCount", 100000, 2000000)]
 
 
         public async Task TestMinMaxResponse(string field, float minNum, float maxNum)
@@ -21,8 +21,8 @@ namespace NUnitTesting
         }
 
         [Test]
-        [TestCase("movieIMDbRating", 1.3f, 8.6f)]
-        [TestCase("totalRatingCount", 100000f, 2000000f)]
+        [TestCase("movieIMDbRating", 1.3, 8.6)]
+        [TestCase("totalRatingCount", 100000, 2000000)]
         public async Task TestMinMaxContetnt(string field, float minNum, float maxNum){
             // Act
             var response = await _movieController.GetMovieReviewFromMinMax(field, minNum, maxNum);
