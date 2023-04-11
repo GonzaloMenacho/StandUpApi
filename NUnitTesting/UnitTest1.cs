@@ -26,7 +26,7 @@ namespace NUnitTesting
         public async Task Get10MoviesTest()
         {
             // Act
-            var response = await _movieController.GetMovies();
+            var response = await _movieController.GetMovieList();
 
             // Assert
             Assert.NotNull(response.Result);
@@ -111,7 +111,7 @@ namespace NUnitTesting
             };
 
             // Act
-            var response = await _movieController.advSearch(searchForm);
+            var response = await _movieController.GetMovieReviewFromSearchForm(searchForm);
 
             // Assert
 
