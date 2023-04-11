@@ -26,6 +26,7 @@ namespace API.Controllers
             {"title", "title"},
             {"movietitle", "title"},
             {"movieimdbrating", "movieIMDbRating" },
+            {"totaluserrating", "movieIMDbRating" },
             {"totalratingcount", "totalRatingCount"},
             {"totaluserreviews", "totalUserReviews" },
             {"totalcriticreviews", "totalCriticReviews" },
@@ -177,7 +178,7 @@ namespace API.Controllers
         /// All strings must be in quotes</param>
         /// <returns></returns>
         [HttpPost("advanced-search-movies")]
-        public async Task<ActionResult<List<Movie>>> advSearchMovieV2([FromBody] AdvancedSearchForm form)
+        public async Task<ActionResult<List<Movie>>> advSearchMovie([FromBody] AdvancedSearchForm form)
         {
             try
             {
