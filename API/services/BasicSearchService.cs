@@ -255,6 +255,22 @@ namespace API.services
                 }
             }
 
+            if (reviewlist.Count() == 0 && movielist.Count() > 0)
+            {
+                foreach(Movie movie in movielist)
+                {
+                    var res = await GetWeightedReviewQuery(_elasticClient, movie, "", reviewIndex, 3);
+                    if (!res.IsValid)
+                    {
+                        throw new HttpRequestException("Failed to find reviews in BasicSearchService GetWeightedReviewList function.");
+                    }
+                    if (res.Documents.Any())    // if we get no reviews, don't add to the list
+                    {
+                        reviewlist.Add(res.Documents.ToList());
+                    }
+                }
+            }
+
             return reviewlist;
         }
 
