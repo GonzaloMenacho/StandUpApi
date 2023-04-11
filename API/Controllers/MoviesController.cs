@@ -26,6 +26,7 @@ namespace API.Controllers
             {"title", "title"},
             {"movietitle", "title"},
             {"movieimdbrating", "movieIMDbRating" },
+            {"totaluserrating", "movieIMDbRating" },
             {"totalratingcount", "totalRatingCount"},
             {"totaluserreviews", "totalUserReviews" },
             {"totalcriticreviews", "totalCriticReviews" },
