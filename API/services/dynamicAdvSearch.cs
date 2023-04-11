@@ -168,6 +168,8 @@ namespace API.services
                 foreach (Movie movie in movieList)
                 {
                     // ideally should break these out into query containers, then do 1 request
+                    // but how do we guarentee only 3 reviews per movie?
+                    // nested query of multiple size 3 queries?
                     form.movieID = movie.MovieID.ToString();
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
@@ -198,8 +200,11 @@ namespace API.services
                 //TODO: cant figure out how to write a query that returns 3 reviews per unique movieID
                 // ultra slow search, dont worry about it, trust the plan etc
                 /* Proposed Algo:
-                 * if movie results null, get all movies
-                 * for each movie, make the review
+                 * if movie query null, get all movies
+                 * for each movieID, make the review query with size 3. 
+                 * for each movieID that returns 0 hits, remove that movie from the list
+                 * end result should be only the movies with hits
+                 * but not sorted by relevancy of those hits (Sad!)
                  */
                 var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
