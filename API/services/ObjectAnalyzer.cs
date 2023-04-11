@@ -4,17 +4,28 @@ namespace API.services
 {
     public class ObjectAnalyzer
     {
-        public static string printProperties(AdvancedSearchForm form)
+        public static bool IsAllNullOrEmpty(object myObject)
+        {
+            foreach (PropertyInfo pi in myObject.GetType().GetProperties())
+            {
+                if (pi.GetValue(myObject) != null)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        public static string printProperties(object form)
         {
             Type type1 = form.GetType();
-            string returnString = "Properties for {0}\r\n" + type1.Name.ToString();
+            string returnString = "Properties for \r\n" + type1.Name.ToString();
 
             PropertyInfo[] props = type1.GetProperties();
 
             foreach (PropertyInfo p in props)
             {
                 string pName = p.Name;
-                if (p.PropertyType.IsArray)
+                if (p.PropertyType.IsArray && p.GetValue(form) != null)
                 {
                     Array a = (Array)p.GetValue(form);
                     string arrayElements = "";

@@ -1,12 +1,13 @@
 ﻿using Nest;
 using System.ComponentModel;
 
-namespace API.services
+namespace API
 {
     public class AdvancedSearchForm
     {
         // names of field must match dictionaries of each controller (not case sensitive)
         // all numeric fields are floats because the minmax service only accepts floats
+        // TODO: custom properties for each field tp tell which is a review and which is a movie?
 
         // Movie Fields to search
         [DefaultValue(null)]

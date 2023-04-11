@@ -132,8 +132,8 @@ namespace API.Controllers
         /// All min-max attributes should be a numeric array of size 2. [minNum, maxNum].
         /// All strings must be in quotes</param>
         /// <returns></returns>
-        [HttpPost("advSearchReviewV2")]
-        public async Task<ActionResult<List<Review>>> advSearchMovieV2([FromBody] AdvancedSearchForm form)
+        [HttpPost("advanced-search-reviews")]
+        public async Task<ActionResult<List<Review>>> advSearch([FromBody] AdvancedSearchForm form)
         {
             try
             {
@@ -143,6 +143,30 @@ namespace API.Controllers
                                     )
                                 );
                 return Ok(response.Documents.ToList());
+            }
+            catch (Exception e)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+            }
+        }
+
+        public class TestForm
+        {
+            public string name { get; set; }
+            public string email { get; set; }
+            public string mobileNumber { get; set; }
+        }
+
+        [HttpPost("test-form")]
+        public async Task<ActionResult<TestForm>> testformroute([FromBody] TestForm form)
+        {
+            try
+            {
+                Console.WriteLine("in route");
+                Console.WriteLine(form.name);
+                Console.WriteLine(form.email);
+                Console.WriteLine(form.mobileNumber);
+                return Ok(form);
             }
             catch (Exception e)
             {
