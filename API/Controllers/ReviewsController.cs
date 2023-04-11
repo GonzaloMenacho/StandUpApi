@@ -42,7 +42,7 @@ namespace API.Controllers
         // Returns first 10 reviews
 
         [HttpGet("")] //api/reviews
-        public async Task<ActionResult<List<Review>>> GetReviews()
+        public async Task<ActionResult<List<Review>>> GetReviewList()
         {
             try
             {
@@ -65,7 +65,7 @@ namespace API.Controllers
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
         /// <returns></returns>
         [HttpGet("token/{field}")]
-        public async Task<ActionResult<List<Review>>> GetReviewData([FromRoute] string field, [FromQuery] string[] searchTerms)
+        public async Task<ActionResult<List<Review>>> GetReviewListFromToken([FromRoute] string field, [FromQuery] string[] searchTerms)
         {
             string eField = ReviewFields["reviewtitle"]; // default
             try
@@ -99,7 +99,7 @@ namespace API.Controllers
         /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
         [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Review>>> GetMinMax([FromRoute] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
+        public async Task<ActionResult<List<Review>>> GetReviewListFromMinMax([FromRoute] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
             string eField = ReviewFields["userrating"]; // default
             try
@@ -133,7 +133,7 @@ namespace API.Controllers
         /// All strings must be in quotes</param>
         /// <returns></returns>
         [HttpPost("advanced-search-reviews")]
-        public async Task<ActionResult<List<Review>>> advSearchReview([FromBody] AdvancedSearchForm form)
+        public async Task<ActionResult<List<Review>>> GetReviewListFromSearchForm([FromBody] AdvancedSearchForm form)
         {
             try
             {
@@ -158,7 +158,7 @@ namespace API.Controllers
         }
 
         [HttpPost("test-form")]
-        public async Task<ActionResult<TestForm>> testformroute([FromBody] TestForm form)
+        public async Task<ActionResult<TestForm>> GetTestForm([FromBody] TestForm form)
         {
             try
             {

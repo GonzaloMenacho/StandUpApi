@@ -52,7 +52,7 @@ namespace API.Controllers
         }
 
         [HttpGet("")] //api/movies
-        public async Task<ActionResult<List<Movie>>> GetMovies()
+        public async Task<ActionResult<List<Movie>>> GetMovieList()
         {
             try
             {
@@ -73,7 +73,7 @@ namespace API.Controllers
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
         /// <returns></returns>
         [HttpGet("char/{field}")]
-        public async Task<ActionResult<List<Movie>>> GetMovieDataByChar([FromRoute] string field, [FromQuery] string[] searchTerms)
+        public async Task<ActionResult<List<Movie>>> GetMovieListFromTitleTerm([FromRoute] string field, [FromQuery] string[] searchTerms)
         {
             string eField = "title"; // default
             try
@@ -106,7 +106,7 @@ namespace API.Controllers
         /// <param name="searchTerms">An array of all the terms you want to search for.</param>
         /// <returns></returns>
         [HttpGet("token/{field}")]
-        public async Task<ActionResult<List<Movie>>> GetMovieDataByToken([FromRoute] string field, [FromQuery] string[] searchTerms)
+        public async Task<ActionResult<List<Movie>>> GetMovieListFromToken([FromRoute] string field, [FromQuery] string[] searchTerms)
         {
             string eField = "title"; // default
             try
@@ -139,7 +139,7 @@ namespace API.Controllers
         /// <param name="maxNum">The higher bound on the field (inclusive)</param>
         /// <returns></returns>
         [HttpGet("minmax/{field}")] //api/reviews/minmaxByField
-        public async Task<ActionResult<List<Movie>>> GetMinMax([FromRoute] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
+        public async Task<ActionResult<List<Movie>>> GetMovieReviewFromMinMax([FromRoute] string field, [FromQuery] float minNum, [FromQuery] float maxNum)
         {
             string eField = "metaScore"; // default
             try
@@ -178,7 +178,7 @@ namespace API.Controllers
         /// All strings must be in quotes</param>
         /// <returns></returns>
         [HttpPost("advanced-search-movies")]
-        public async Task<ActionResult<List<Movie>>> advSearchMovie([FromBody] AdvancedSearchForm form)
+        public async Task<ActionResult<List<Movie>>> GetMovieListFromSearchForm([FromBody] AdvancedSearchForm form)
         {
             try
             {
@@ -204,7 +204,7 @@ namespace API.Controllers
         /// All strings must be in quotes</param>
         /// <returns></returns>
         [HttpPost("advanced-search")]
-        public async Task<ActionResult<MovieReview>> advSearch([FromBody] AdvancedSearchForm form)
+        public async Task<ActionResult<MovieReview>> GetMovieReviewFromSearchForm([FromBody] AdvancedSearchForm form)
         {
             try
             {
@@ -373,7 +373,7 @@ namespace API.Controllers
         // plz don't delete, elijah T^T
         // LOL^
         [HttpGet("initialize-cache")]
-        public async Task<ActionResult<MovieReview>> GetCacheInitialization()
+        public async Task<ActionResult<MovieReview>> GetMovieReviewForCacheInitialization()
         {
             try
             {
