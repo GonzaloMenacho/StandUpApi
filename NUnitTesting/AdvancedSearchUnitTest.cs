@@ -1,74 +1,19 @@
-using API;
+﻿using API;
 using API.Controllers;
 using API.services;
-using Elasticsearch.Net;
 using Microsoft.AspNetCore.Mvc;
 using Nest;
-using System.Net;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace NUnitTesting
 {
     [TestFixture]
-    public class Tests
+    internal class AdvancedSearchUnitTest : AbstractTestBase
     {
-        private IElasticClient _elasticClient;
-        private MoviesController _movieController;
-
-        [SetUp]
-        public void Setup()
-        {
-            //var config = new ConnectionConfiguration(new Uri("http://localhost:9200"));
-            _elasticClient = new ElasticClient();
-            _movieController = new MoviesController(_elasticClient);
-        }
-        
-        [Test]
-        public async Task Get10MoviesTest()
-        {
-            // Act
-            var response = await _movieController.GetMovieList();
-
-            // Assert
-            Assert.NotNull(response.Result);
-            Assert.IsInstanceOf<OkObjectResult>(response.Result);
-
-            var movies = ((OkObjectResult)response.Result).Value as List<Movie>;
-            Assert.That(movies.Count, Is.EqualTo(10));
-        }
-
-        [Test]
-        [TestCase("")]
-        [TestCase("avengers")]
-        [TestCase("aven")]
-        [TestCase("good movie")]
-        [TestCase("asovuboaiwba09")]
-        [TestCase("{}!@sdoih';';......-=-=:::")]
-        [TestCase(")!@*)&%)&@Morbius)!&@)&(#@&#%(")]
-        public async Task BasicSearchTest(string? term)
-        {
-            // Act
-            var response = await _movieController.GetMovieReviewFromTerm(term);
-
-            // Assert
-
-            // Assert we have a response.
-            Assert.NotNull(response.Result);
-
-            // Assert Status Code 200 is returned.
-            Assert.IsInstanceOf<OkObjectResult>(response.Result);
-
-            // Assert that we have MovieDocuments always being returned;
-            var movies = ((OkObjectResult)response.Result).Value as MovieReview;
-            Assert.That(movies.MovieDocuments.Count(), Is.GreaterThan(0));
-
-            // If we matched on a movie title, assert that we are getting reviews back.
-            if(movies.MovieDocuments.Count() < 10)
-            {
-                Assert.That(movies.MovieDocuments.Count(), Is.EqualTo(movies.ReviewDocuments.Count()));
-            }
-        }
-
-
         [Test]
         [TestCase(null, null, null, null, null, null, null, null)]
         [TestCase("avengers", null, null, null, null, null, null, null)]
@@ -85,7 +30,7 @@ namespace NUnitTesting
         [TestCase(null, null, null, "great", "bad thing", null, null, null)]
         [TestCase(null, null, null, "bad", null, null, new[] { 5.0f, 150.0f }, null)]
         [TestCase("Joker", null, null, "awesome", null, null, new[] { 55.0f, 300.0f }, null)]
-        [TestCase("Aven", null, null, "pog", "great", null, new[] { 5.0f, 100.0f }, new[] { 5.0f, 10.0f})]
+        [TestCase("Aven", null, null, "pog", "great", null, new[] { 5.0f, 100.0f }, new[] { 5.0f, 10.0f })]
         public async Task AdvancedSearchTest(
             string title,
             float[] movieUserRating,
