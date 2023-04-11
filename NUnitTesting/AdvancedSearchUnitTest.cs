@@ -65,7 +65,7 @@
                 Assert.That(movies.MovieDocuments.Count(), Is.EqualTo(movies.ReviewDocuments.Count()));
             }
         }
-        
+
         [Test]
         [TestCase(null, null, null, null, null, null, null, null)]
         [TestCase("avengers", null, null, null, null, null, null, null)]
@@ -115,7 +115,7 @@
             var results = ((OkObjectResult)response.Result).Value as MovieReview;
             var movies = results.MovieDocuments;
 
-            for(int i = 0; i < movies.Count(); i++)
+            for (int i = 0; i < movies.Count(); i++)
             {
                 Movie movieResult = movies[i];
                 //Assert that each review has a matching movie ID
@@ -126,5 +126,65 @@
                 }
             }
         }
+
+        [TestCase(null, null, null, "awesome", null, null, null, null)]
+        [TestCase(null, null, null, null, "iron", null, null, null)]
+        [TestCase(null, null, null, "awesome", "iron", null, null, null)]
+        public async Task TestAdvancedSearchReviewKeywordsInResults(
+            string title,
+            float[] movieUserRating,
+            float[] movieTotalRating,
+            string reviewBody,
+            string reviewTitle,
+            float[] reviewTotalVotes,
+            float[] reviewUsefulness,
+            float[] reviewUserRating
+            )
+        {
+            // Makes sure each movie has reviews with a movieID on each that matches the movie
+
+            // Arrange
+            var searchForm = new AdvancedSearchForm
+            {
+                MovieTitle = title,
+                TotalUserRatingMinMax = movieUserRating,
+                TotalRatingCountMinMax = movieTotalRating,
+                ReviewBody = reviewBody,
+                ReviewTitle = reviewTitle,
+                TotalVotesMinMax = reviewTotalVotes,
+                UsefulnessVoteMinMax = reviewUsefulness,
+                ReviewUserRatingMinMax = reviewUserRating
+            };
+
+            // Act
+            var response = await _movieController.GetMovieReviewFromSearchForm(searchForm);
+
+            var results = ((OkObjectResult)response.Result).Value as MovieReview;
+
+            if (reviewBody != null)
+            {
+                for (int i = 0; i < results.ReviewDocuments.Count(); i++)
+                {
+                    var reviews = results.ReviewDocuments[i];
+                    foreach (Review reviewResult in reviews)
+                    {
+                        Assert.That(reviewResult.ReviewBody.ToLower(), Contains.Substring(reviewBody.ToLower()));
+                    }
+                }
+            }
+
+            if (reviewTitle != null)
+            {
+                for (int i = 0; i < results.ReviewDocuments.Count(); i++)
+                {
+                    var reviews = results.ReviewDocuments[i];
+                    foreach (Review reviewResult in reviews)
+                    {
+                        Assert.That(reviewResult.ReviewBody.ToLower(), Contains.Substring(reviewTitle.ToLower()));
+                    }
+                }
+            }
+        }
     }
 }
+
