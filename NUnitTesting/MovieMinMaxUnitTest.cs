@@ -3,10 +3,9 @@ namespace NUnitTesting
     internal class MovieMinMaxUnitTest : AbstractTestBase
     {
         [Test]
-        [TestCase("movieIMDbRating", 1.3f, 8.6f)]
+        [TestCase(null, 0.0f, 10.0f)]
+        [TestCase("movieIMDbRating", 1.0f, 8.0f)]
         [TestCase("totalRatingCount", 100000f, 2000000f)]
-
-
         public async Task TestMinMaxResponse(string field, float minNum, float maxNum)
         {
             // Act
