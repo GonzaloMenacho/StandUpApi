@@ -1,15 +1,4 @@
-﻿using API;
-using API.Controllers;
-using API.services;
-using Microsoft.AspNetCore.Mvc;
-using Nest;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace NUnitTesting
+﻿namespace NUnitTesting
 {
     [TestFixture]
     internal class AdvancedSearchUnitTest : AbstractTestBase
