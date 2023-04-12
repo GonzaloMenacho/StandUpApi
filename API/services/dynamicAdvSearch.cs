@@ -24,6 +24,8 @@ namespace API.services
                 searchingMovies = false;
             }
 
+            bool addedReviewKeywordMultiMatch = false;       // flag that tells us if we have already done a multimatch for review keyword
+
             //  QUERY LIST BUILDER
             // no longer its own function so we can decide when to use should or must per field
             List<QueryContainer> queryContainerList = new List<QueryContainer>();
@@ -78,6 +80,7 @@ namespace API.services
                         if (p.GetValue(form) is string)
                         {
                             terms[0] = (string)p.GetValue(form);
+                            terms[0] = terms[0].ToLower();
                         }
 
                         if (p.PropertyType.IsArray) //
@@ -117,12 +120,10 @@ namespace API.services
                                              b => b.Must((minMaxService.RangeQueryBuilder(field, movieIDNum, movieIDNum))));
                             queryContainerList.Add(q);
                         }
-                        else if (field == "Review Title" || field == "Review")
+                        else if ((field == "Review Title" || field == "Review") && form.ReviewTitle == form.ReviewBody && !addedReviewKeywordMultiMatch)
                         {
-                            // should is too lenient perhaps, but we want to allow a document to have the terms
-                            // in either field. remove stop words? do we want to enable fuzziness?
                             var q = new QueryContainerDescriptor<T>().Bool(
-                                            b => b.Must(matchService.MatchListBuilder(field, terms, false)));
+                                            b => b.Must(multiMatchService.MultiMatchListBuilder(new[] {"Review Title", "Review" }, terms, false)));
                             queryContainerList.Add(q);
                         }
                         else

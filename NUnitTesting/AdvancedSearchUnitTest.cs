@@ -140,6 +140,8 @@ namespace NUnitTesting
         [TestCase(null, null, null, null, "iron", null, null, null)]
         [TestCase(null, null, null, "awesome", "iron", null, null, null)]
         [TestCase(null, null, null, "awesome movie", "iron man", null, null, null)]
+        [TestCase(null, null, null, "awesome movie", "awesome movie", null, null, null)] // this one should allow for the keyword to appear in either one instead of both
+        [TestCase(null, null, null, "morbillion", "morbillion", null, null, null)]
         public async Task TestAdvancedSearchReviewKeywordsInResults(
             string title,
             float[] movieUserRating,
@@ -171,10 +173,16 @@ namespace NUnitTesting
             var response = await _movieController.GetMovieReviewFromSearchForm(searchForm);
             var results = ((OkObjectResult)response.Result).Value as MovieReview;
 
+            bool searchingWithMultiMatch = false;
+
+            if (reviewBody == reviewTitle) 
+            { 
+                searchingWithMultiMatch = true; 
+            }
+
+            int keywordsPresent = 0;
             if (reviewBody != null)
             {
-                int keywordsPresent = 0;
-
                 string[] bodyKeywords = reviewBody.Split(' ');
                 for (int i = 0; i < results.ReviewDocuments.Count(); i++)
                 {
@@ -190,14 +198,16 @@ namespace NUnitTesting
                             }
                         }
                     }
-                    Assert.That(keywordsPresent, Is.GreaterThanOrEqualTo(1));
+                    if (!searchingWithMultiMatch)
+                    {
+                        Assert.That(keywordsPresent, Is.GreaterThanOrEqualTo(1));
+                        keywordsPresent = 0;
+                    }
                 }
             }
 
             if (reviewTitle != null)
             {
-                int keywordsPresent = 0;
-
                 string[] titleKeywords = reviewTitle.Split(' ');
                 for (int i = 0; i < results.ReviewDocuments.Count(); i++)
                 {
@@ -211,15 +221,24 @@ namespace NUnitTesting
                             {
                                 keywordsPresent++;
                             }
-                            Assert.That(keywordsPresent, Is.GreaterThanOrEqualTo(1));
                         }
                     }
+                    if (!searchingWithMultiMatch)
+                    {
+                        Assert.That(keywordsPresent, Is.GreaterThanOrEqualTo(1));
+                        keywordsPresent = 0;
+                    }
                 }
+            }
+
+            if (searchingWithMultiMatch)        // multimatch allows for the keyword to show up in either field
+            {
+                Assert.That(keywordsPresent, Is.GreaterThanOrEqualTo(1));
             }
         }
 
         [Test]
-        [TestCase(new[] {"action"}, null, null, null)]
+        [TestCase(new[] { "action" }, null, null, null)]
         [TestCase(new[] { "action", "drama" }, null, null, null)]
         [TestCase(new[] { "action drama" }, null, null, null)]
         [TestCase(null, new[] { "russo" }, null, null)]
@@ -230,7 +249,7 @@ namespace NUnitTesting
         [TestCase(null, null, new[] { "tarantino", "avery" }, null)]
         [TestCase(null, null, new[] { "stan lee" }, null)]
         [TestCase(null, null, new[] { "Mckenna", "stan lee" }, null)]
-        [TestCase(null, null, null, new[] {"holland"})]
+        [TestCase(null, null, null, new[] { "holland" })]
         [TestCase(null, null, null, new[] { "tom holland" })]
         [TestCase(null, null, null, new[] { "bale", "ledger" })]
         [TestCase(null, null, null, new[] { "bale", "heath ledger" })]
