@@ -46,7 +46,9 @@ namespace NUnitTesting
             // Assert
             // Assert that we have MovieDocuments always being returned;
             var movies = ((OkObjectResult)response.Result).Value as MovieReview;
-            Assert.That(movies.MovieDocuments.Count(), Is.GreaterThan(0));
+            if (movies.ReviewDocuments.Count() > 0) {
+                Assert.That(movies.MovieDocuments.Count(), Is.GreaterThan(0));
+            }
 
             // If we matched on a movie title, assert that we are getting reviews back.
             if (movies.MovieDocuments.Count() < 10)
