@@ -66,7 +66,7 @@ namespace API.services
 
             // If term did not hit on the movie field, do a match all
             // comment this chunk out if we want to return no movies
-            if (movielist.Count == 0)
+            if (term == null)
             {
                 try
                 {
@@ -225,7 +225,7 @@ namespace API.services
         // returns List<List<Review>>
         public static async Task<List<List<Review>>> GetWeightedReviewList(
             IElasticClient _elasticClient, 
-            List<Movie> movielist, 
+            List<Movie>? movielist, 
             string? term = "",
             string? index = "reviews",
             int? size = 3)
@@ -235,14 +235,22 @@ namespace API.services
                 throw new ArgumentNullException(nameof(_elasticClient));
             }
 
-            if (movielist is null || movielist.Count == 0)
+            List<Movie> tempMovieList = movielist;
+
+            if (movielist.Count == 0)
             {
-                throw new ArgumentNullException(nameof(movielist));
+                try
+                {
+                    tempMovieList = await MatchAllGetMovieList(_elasticClient);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.Message);
+                }
             }
 
             List<List<Review>> reviewlist = new List<List<Review>>();
-
-            foreach (Movie movie in movielist)
+            foreach (Movie movie in tempMovieList)
             {
                 var res = await GetWeightedReviewQuery(_elasticClient, movie, term, reviewIndex, 3);
                 if (!res.IsValid)
@@ -257,7 +265,7 @@ namespace API.services
 
             if (reviewlist.Count() == 0 && movielist.Count() > 0)
             {
-                foreach(Movie movie in movielist)
+                foreach(Movie movie in tempMovieList)
                 {
                     var res = await GetWeightedReviewQuery(_elasticClient, movie, "", reviewIndex, 3);
                     if (!res.IsValid)
