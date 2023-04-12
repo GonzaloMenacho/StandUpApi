@@ -86,29 +86,33 @@ namespace API.services
                         if (p.PropertyType.IsArray) //
                         {
                             Array a = (Array)p.GetValue(form);
-                            if (a.GetValue(0) is float)  // numeric array == min max
+                            if (a.Length > 0)
                             {
-                                var q = new QueryContainerDescriptor<T>().Bool(
-                                            b => b.Must(minMaxService.RangeQueryBuilder(field, (float)a.GetValue(0), (float)a.GetValue(1))));
-                                queryContainerList.Add(q);
-                            }
-                            else // array of strings? 
-                            {
-                                string arrayElements = "";
-
-                                for (int i = 0; i < a.Length; i++)
+                                if (a.GetValue(0) is float)  // numeric array == min max
                                 {
-                                    object pValue = a.GetValue(i);
-                                    arrayElements += pValue.ToString() + " ";
+                                    var q = new QueryContainerDescriptor<T>().Bool(
+                                                b => b.Must(minMaxService.RangeQueryBuilder(field, (float)a.GetValue(0), (float)a.GetValue(1))));
+                                    queryContainerList.Add(q);
                                 }
-                                string[] s = { arrayElements };
-                                var q = new QueryContainerDescriptor<T>().Bool(
-                                            b => b.Must(matchService.MatchListBuilder(field, s, false)));
-                                queryContainerList.Add(q);
+                                else // array of strings? 
+                                {
+                                    string arrayElements = "";
+
+                                    for (int i = 0; i < a.Length; i++)
+                                    {
+                                        object pValue = a.GetValue(i);
+                                        arrayElements += pValue.ToString() + " ";
+                                    }
+                                    string[] s = { arrayElements };
+                                    var q = new QueryContainerDescriptor<T>().Bool(
+                                                b => b.Must(matchService.MatchListBuilder(field, s, false)));
+                                    queryContainerList.Add(q);
+                                }
                             }
                         }
                         else if (field == "title")
                         {
+                            terms = terms[0].Split(' ');
                             var q = new QueryContainerDescriptor<T>().Bool(
                                             b => b.Must(searchByCharRaw.RegexpListBuilder(field, terms)));
                             queryContainerList.Add(q);
@@ -195,7 +199,7 @@ namespace API.services
                 }
             } else         // no movie criteria was searched, search on reviews first, then find the movies
             {
-                /* Proposed Algo:
+                /* Bad Algo:
                  * if movie query null, get all movies
                  * for each movieID, make the review query with size 3. 
                  * for each movieID that returns 0 hits, remove that movie from the list
@@ -213,6 +217,9 @@ namespace API.services
                 foreach (Movie movie in movieList)
                 {
                     form.movieID = movie.MovieID.ToString();
+                    // ideally should break these out into query containers, then do 1 request
+                    // but how do we guarentee only 3 reviews per movie?
+                    // nested query of multiple size 3 queries?
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
                                     .Size(3)
