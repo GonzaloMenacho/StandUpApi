@@ -1,4 +1,12 @@
-﻿namespace NUnitTesting
+﻿using API;
+using API.Controllers;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Linq;
+using System.Reflection;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+
+namespace NUnitTesting
 {
     [TestFixture]
     internal class AdvancedSearchUnitTest : AbstractTestBase
@@ -111,8 +119,8 @@
 
             // Act
             var response = await _movieController.GetMovieReviewFromSearchForm(searchForm);
-
             var results = ((OkObjectResult)response.Result).Value as MovieReview;
+
             var movies = results.MovieDocuments;
 
             for (int i = 0; i < movies.Count(); i++)
@@ -161,7 +169,6 @@
 
             // Act
             var response = await _movieController.GetMovieReviewFromSearchForm(searchForm);
-
             var results = ((OkObjectResult)response.Result).Value as MovieReview;
 
             if (reviewBody != null)
@@ -206,6 +213,104 @@
                             }
                             Assert.That(keywordsPresent, Is.GreaterThanOrEqualTo(1));
                         }
+                    }
+                }
+            }
+        }
+
+        [Test]
+        [TestCase(new[] {"action"}, null, null, null)]
+        [TestCase(new[] { "action", "drama" }, null, null, null)]
+        [TestCase(new[] { "action drama" }, null, null, null)]
+        [TestCase(null, new[] { "russo" }, null, null)]
+        [TestCase(null, new[] { "russo", "joe" }, null, null)]
+        [TestCase(null, new[] { "anthony russo" }, null, null)]
+        [TestCase(null, new[] { "anthony russo", "joe russo" }, null, null)]
+        [TestCase(null, null, new[] { "tarantino" }, null)]
+        [TestCase(null, null, new[] { "tarantino", "avery" }, null)]
+        [TestCase(null, null, new[] { "stan lee" }, null)]
+        [TestCase(null, null, new[] { "Mckenna", "stan lee" }, null)]
+        [TestCase(null, null, null, new[] {"holland"})]
+        [TestCase(null, null, null, new[] { "tom holland" })]
+        [TestCase(null, null, null, new[] { "bale", "ledger" })]
+        [TestCase(null, null, null, new[] { "bale", "heath ledger" })]
+        [TestCase(new[] { "action", "drama" }, new[] { "anthony russo", "joe russo" }, new[] { "stan lee", "Stephen McFeely" }, new[] { "Robert Downey Jr.", "Chris Evans", "Mark Ruffalo" })]
+        public async Task TestAdvancedSearchOnStringArrayFields(
+            string[] genresList,
+            string[] directorsList,
+            string[] creatorsList,
+            string[] mainStarsList
+            )
+        {
+            // Arrange
+            var searchForm = new AdvancedSearchForm
+            {
+                MovieGenres = genresList,
+                Directors = directorsList,
+                Creators = creatorsList,
+                MainStars = mainStarsList
+            };
+
+            // Act
+            var response = await _movieController.GetMovieReviewFromSearchForm(searchForm);
+            var results = ((OkObjectResult)response.Result).Value as MovieReview;
+
+            string[][] listsPerField = new[] { genresList, directorsList, creatorsList, mainStarsList };
+
+            // Because string array fields only exist in the movie attributes, we can do this:
+            var moviesList = results.MovieDocuments;
+            for (int i = 0; i < moviesList.Count(); i++)
+            {
+                for (int fieldIndex = 0; fieldIndex < listsPerField.Length; fieldIndex++) // loop through each field list
+                {
+                    string[] keywordList = listsPerField[fieldIndex];        // grab current list (i.e., genresList)
+                    if (keywordList != null)
+                    {
+                        int keywordPresent = 0;
+                        foreach (string setOfKeywords in keywordList)   // for each string in the current list
+                        {
+                            string[] innerKeywordList = setOfKeywords.Split(' ');   // split that string into words
+                            foreach (string singleKeyword in innerKeywordList)    // for each word, check to see if it is present in the field array
+                            {
+                                switch (fieldIndex)
+                                {
+                                    case 0:
+                                        if (moviesList[i].MovieGenres.Contains(singleKeyword.ToLower(), StringComparer.OrdinalIgnoreCase))
+                                        {
+                                            keywordPresent++;
+                                        }
+                                        break;
+                                    case 1:
+                                        foreach (string director in moviesList[i].Directors)
+                                        {
+                                            if (director.Contains(singleKeyword.ToLower(), StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                keywordPresent++;
+                                            }
+                                        }
+                                        break;
+                                    case 2:
+                                        foreach (string creator in moviesList[i].Creators)
+                                        {
+                                            if (creator.Contains(singleKeyword.ToLower(), StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                keywordPresent++;
+                                            }
+                                        }
+                                        break;
+                                    case 3:
+                                        foreach (string mainStar in moviesList[i].MainStars)
+                                        {
+                                            if (mainStar.Contains(singleKeyword.ToLower(), StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                keywordPresent++;
+                                            }
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                        Assert.That(keywordPresent, Is.GreaterThanOrEqualTo(1));
                     }
                 }
             }
