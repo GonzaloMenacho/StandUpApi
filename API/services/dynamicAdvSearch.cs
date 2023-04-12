@@ -58,7 +58,7 @@ namespace API.services
                             p.SetValue(form, null); // get rid of the irrelevant info on the form
                         }
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         if (searchingMovies) // we are in movie search about to analyze review attributes
                         { break; }
