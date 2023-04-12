@@ -275,9 +275,12 @@ namespace NUnitTesting
                                 switch (fieldIndex)
                                 {
                                     case 0:
-                                        if (moviesList[i].MovieGenres.Contains(singleKeyword.ToLower(), StringComparer.OrdinalIgnoreCase))
+                                        foreach (string genre in moviesList[i].MovieGenres)
                                         {
-                                            keywordPresent++;
+                                            if (genre.Contains(singleKeyword.ToLower(), StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                keywordPresent++;
+                                            }
                                         }
                                         break;
                                     case 1:
