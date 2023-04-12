@@ -80,7 +80,7 @@ namespace API.Controllers
             {
                 eField = MovieFields[field.ToLower().Trim()];
             }
-            catch (Exception e) { }
+            catch (Exception) { }
 
             try
             {
@@ -113,7 +113,7 @@ namespace API.Controllers
             {
                 eField = MovieFields[field.ToLower().Trim()];
             }
-            catch (Exception e) { }
+            catch (Exception) { }
 
             try
             {
@@ -146,7 +146,7 @@ namespace API.Controllers
             {
                 eField = MovieFields[field.ToLower().Trim()];
             }
-            catch (Exception e) { }
+            catch (Exception) { }
 
             if (minNum > maxNum)
             {
