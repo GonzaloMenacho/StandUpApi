@@ -120,9 +120,9 @@ namespace API.services
                         else if (field == "Review Title" || field == "Review")
                         {
                             // should is too lenient perhaps, but we want to allow a document to have the terms
-                            // in either field. remove stop words?
+                            // in either field. remove stop words? do we want to enable fuzziness?
                             var q = new QueryContainerDescriptor<T>().Bool(
-                                            b => b.Must(matchService.MatchListBuilder(field, terms)));
+                                            b => b.Must(matchService.MatchListBuilder(field, terms, false)));
                             queryContainerList.Add(q);
                         }
                         else
