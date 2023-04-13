@@ -6,7 +6,7 @@ using NuGet.Frameworks;
 namespace NUnitTesting
 {
     [TestFixture]
-    internal class BasicSearchUnitTest : AbstractTestBase
+    internal class BasicSearchIntegrationTest : AbstractTestBase
     {
         [Test]
         [TestCase("")]
