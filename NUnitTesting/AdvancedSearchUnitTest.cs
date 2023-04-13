@@ -14,6 +14,7 @@ namespace NUnitTesting
         [Test]
         [TestCase(null, null, null, null, null, null, null, null)]
         [TestCase("avengers", null, null, null, null, null, null, null)]
+        [TestCase("forrest gump", null, null, null, null, null, null, null)]
         [TestCase(null, new[] { 6.0f, 10.0f }, null, null, null, null, null, null)]
         [TestCase(null, null, new[] { 500.0f, 100000.0f }, null, null, null, null, null)]
         [TestCase(null, null, null, "awesome", null, null, null, null)]
