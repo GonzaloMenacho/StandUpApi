@@ -260,16 +260,17 @@ namespace API.services
                     }
                 }
 
-                List<Movie> validMovies = new List<Movie>(movieList);
-                foreach(Movie movie in movieList)
-                {
-                    if (!returnedMovieIDs.Contains(movie.MovieID))
-                    {
-                        validMovies.Remove(movie);
-                    }
-                }
+                //List<Movie> validMovies = new List<Movie>(movieList);
+                //foreach(Movie movie in movieList)
+                //{
+                //    if (!returnedMovieIDs.Contains(movie.MovieID))
+                //    {
+                //        validMovies.Remove(movie);
+                //    }
+                //}
 
-                movieList = validMovies;
+                //movieList = validMovies;
+                movieList = new List<Movie>(); // return empty list if no movie hits
             }
             MovieReview results = new MovieReview();
             results.MovieDocuments = movieList;
