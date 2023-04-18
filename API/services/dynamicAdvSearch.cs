@@ -195,7 +195,11 @@ namespace API.services
                                             )
                                         )
                                     );
-                    setOfReviewsList.Add(reviewRes.Documents.ToList());
+
+                    if (reviewRes.Documents.Count > 0)
+                    {
+                        setOfReviewsList.Add(reviewRes.Documents.ToList());
+                    }
                 }
             } else         // no movie criteria was searched, search on reviews first, then find the movies
             {
