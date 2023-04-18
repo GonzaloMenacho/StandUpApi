@@ -195,7 +195,11 @@ namespace API.services
                                             )
                                         )
                                     );
-                    setOfReviewsList.Add(reviewRes.Documents.ToList());
+
+                    if (reviewRes.Documents.Count > 0)
+                    {
+                        setOfReviewsList.Add(reviewRes.Documents.ToList());
+                    }
                 }
             } else         // no movie criteria was searched, search on reviews first, then find the movies
             {
@@ -248,28 +252,29 @@ namespace API.services
                     }
                 }
 
-                List<int> returnedMovieIDs = new List<int>();
-                foreach (List<Review> reviewSet in setOfReviewsList)
-                {
-                    if (reviewSet.Count > 0)
-                    {
-                        if (!returnedMovieIDs.Contains(reviewSet[0].MovieID))
-                        {
-                            returnedMovieIDs.Add(reviewSet[0].MovieID);
-                        }
-                    }
-                }
+                //List<int> returnedMovieIDs = new List<int>();
+                //foreach (List<Review> reviewSet in setOfReviewsList)
+                //{
+                //    if (reviewSet.Count > 0)
+                //    {
+                //        if (!returnedMovieIDs.Contains(reviewSet[0].MovieID))
+                //        {
+                //            returnedMovieIDs.Add(reviewSet[0].MovieID);
+                //        }
+                //    }
+                //}
 
-                List<Movie> validMovies = new List<Movie>(movieList);
-                foreach(Movie movie in movieList)
-                {
-                    if (!returnedMovieIDs.Contains(movie.MovieID))
-                    {
-                        validMovies.Remove(movie);
-                    }
-                }
+                //List<Movie> validMovies = new List<Movie>(movieList);
+                //foreach(Movie movie in movieList)
+                //{
+                //    if (!returnedMovieIDs.Contains(movie.MovieID))
+                //    {
+                //        validMovies.Remove(movie);
+                //    }
+                //}
 
-                movieList = validMovies;
+                //movieList = validMovies;
+                movieList = new List<Movie>(); // return empty list if no movie hits
             }
             MovieReview results = new MovieReview();
             results.MovieDocuments = movieList;
