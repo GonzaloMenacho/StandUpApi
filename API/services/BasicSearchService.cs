@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using API.Controllers;
+using Microsoft.AspNetCore.Mvc;
 using Nest;
 using System.Threading.Tasks;
 
@@ -250,24 +251,61 @@ namespace API.services
             }
 
             List<List<Review>> reviewlist = new List<List<Review>>();
-            foreach (Movie movie in tempMovieList)
-            {
-                var res = await GetWeightedReviewQuery(_elasticClient, movie, term, reviewIndex, 3);
-                if (!res.IsValid)
-                {
-                    throw new HttpRequestException("Failed to find reviews in BasicSearchService GetWeightedReviewList function.");
-                }
-                if (res.Documents.Any())    // if we get no reviews, don't add to the list
-                {
-                    reviewlist.Add(res.Documents.ToList());
-                }
-            }
 
-            if (reviewlist.Count() == 0 && movielist.Count() > 0)
-            {
-                foreach(Movie movie in tempMovieList)
+            if (movielist.Count() < 1)
+            {   // if no movies returned, we should prioritize relevancy over usefulness votes
+                var reviewResList = new List<ISearchResponse<Review>>();
+
+                foreach (Movie movie in tempMovieList)
                 {
-                    var res = await GetWeightedReviewQuery(_elasticClient, movie, "", reviewIndex, 3);
+                    string[] terms = { term };
+
+                    var reviewContainerList = new List<QueryContainer>();
+
+                    var keywordQuery = new QueryContainerDescriptor<Review>().Bool(
+                                            b => b.Must(multiMatchService.MultiMatchListBuilder(new[] { "Review Title", "Review" }, terms, false)));
+                    var movieIDQuery = new QueryContainerDescriptor<Review>().Bool(
+                                            b => b.Must(minMaxService.RangeQueryBuilder("movieID", movie.MovieID, movie.MovieID)));
+                    
+                    reviewContainerList.Add(keywordQuery);
+                    reviewContainerList.Add(movieIDQuery);
+
+                    var finalq = new QueryContainerDescriptor<Review>().Bool(
+                                            b => b.Must(reviewContainerList.ToArray()));
+
+                    var res = await _elasticClient.SearchAsync<Review>(s => s
+                                    .Index(ReviewsController.reviewIndex)
+                                    .Size(3)
+                                    .Query(q => finalq
+                                                    )
+                                    );
+                    if (!res.IsValid)
+                    {
+                        throw new HttpRequestException("Failed to find reviews in BasicSearchService GetWeightedReviewList function.");
+                    }
+                    if (res.Documents.Any())    // if we get no reviews, don't add to the list
+                    {
+                        reviewResList.Add(res);
+                    }
+                }
+
+                var orderByRelevance = from result in reviewResList
+                                       orderby result.MaxScore descending
+                                       select result;
+
+
+                foreach (var result in orderByRelevance)
+                {
+                    reviewlist.Add(result.Documents.ToList());
+                }
+
+            }
+            else
+            {
+
+                foreach (Movie movie in tempMovieList)
+                {
+                    var res = await GetWeightedReviewQuery(_elasticClient, movie, term, reviewIndex, 3);
                     if (!res.IsValid)
                     {
                         throw new HttpRequestException("Failed to find reviews in BasicSearchService GetWeightedReviewList function.");
