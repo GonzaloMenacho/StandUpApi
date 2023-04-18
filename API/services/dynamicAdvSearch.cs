@@ -248,17 +248,17 @@ namespace API.services
                     }
                 }
 
-                List<int> returnedMovieIDs = new List<int>();
-                foreach (List<Review> reviewSet in setOfReviewsList)
-                {
-                    if (reviewSet.Count > 0)
-                    {
-                        if (!returnedMovieIDs.Contains(reviewSet[0].MovieID))
-                        {
-                            returnedMovieIDs.Add(reviewSet[0].MovieID);
-                        }
-                    }
-                }
+                //List<int> returnedMovieIDs = new List<int>();
+                //foreach (List<Review> reviewSet in setOfReviewsList)
+                //{
+                //    if (reviewSet.Count > 0)
+                //    {
+                //        if (!returnedMovieIDs.Contains(reviewSet[0].MovieID))
+                //        {
+                //            returnedMovieIDs.Add(reviewSet[0].MovieID);
+                //        }
+                //    }
+                //}
 
                 //List<Movie> validMovies = new List<Movie>(movieList);
                 //foreach(Movie movie in movieList)
