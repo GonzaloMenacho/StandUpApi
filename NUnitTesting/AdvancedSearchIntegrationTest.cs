@@ -9,7 +9,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 namespace NUnitTesting
 {
     [TestFixture]
-    internal class AdvancedSearchUnitTest : AbstractTestBase
+    internal class AdvancedSearchIntegrationTest : AbstractTestBase
     {
         [Test]
         [TestCase(null, null, null, null, null, null, null, null)]
