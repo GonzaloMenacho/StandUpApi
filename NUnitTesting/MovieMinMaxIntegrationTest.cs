@@ -1,6 +1,6 @@
 namespace NUnitTesting
 {
-    internal class MovieMinMaxUnitTest : AbstractTestBase
+    internal class MovieMinMaxIntegrationTest : AbstractTestBase
     {
         [Test]
         [TestCase(null, 0.0f, 10.0f)]

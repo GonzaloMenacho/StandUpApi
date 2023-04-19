@@ -1,6 +1,6 @@
 ﻿namespace NUnitTesting
 {
-    internal class Get10MoviesUnitTest : AbstractTestBase
+    internal class Get10MoviesIntegrationTest : AbstractTestBase
     {
         [Test]
         public async Task Get10MoviesTest()

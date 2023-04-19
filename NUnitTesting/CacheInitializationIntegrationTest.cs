@@ -3,7 +3,7 @@ namespace NUnitTesting
     internal class CacheInitializationUnitTest : AbstractTestBase
     {
         [Test]
-        public async Task TestCacheInitializionResponse()
+        public async Task TestCacheInitializationResponse()
         {
             // Act
             var response = await _movieController.GetMovieReviewForCacheInitialization();
@@ -17,7 +17,7 @@ namespace NUnitTesting
 
         }
         [Test]
-        public async Task ContentTypeTest()
+        public async Task TestCacheInitializationContentType()
         {
             // Act
             var response = await _movieController.GetMovieReviewForCacheInitialization();
