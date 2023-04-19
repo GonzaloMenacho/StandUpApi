@@ -11,6 +11,11 @@ namespace API.services
     // Ideas: search on the movie criteria first, then add a query on the reviews that says "grab only reviews from these movieIDs"
     public class dynamicAdvSearch
     {
+        public static List<ISearchResponse<Review>> sortByRevelancy(List<ISearchResponse<Review>> reviewResList)
+        {
+
+            return reviewResList;
+        }
 
         public static QueryContainer SingleIndexRequest<T>(T typeOBJ, AdvancedSearchForm form) where T : class
         {
@@ -124,11 +129,15 @@ namespace API.services
                                              b => b.Must((minMaxService.RangeQueryBuilder(field, movieIDNum, movieIDNum))));
                             queryContainerList.Add(q);
                         }
-                        else if ((field == "Review Title" || field == "Review") && form.ReviewTitle == form.ReviewBody && !addedReviewKeywordMultiMatch)
+                        else if ((field == "Review Title" || field == "Review") && form.ReviewTitle == form.ReviewBody)
                         {
-                            var q = new QueryContainerDescriptor<T>().Bool(
-                                            b => b.Must(multiMatchService.MultiMatchListBuilder(new[] {"Review Title", "Review" }, terms, false)));
-                            queryContainerList.Add(q);
+                            if (!addedReviewKeywordMultiMatch)
+                            {
+                                var q = new QueryContainerDescriptor<T>().Bool(
+                                                b => b.Must(multiMatchService.MultiMatchListBuilder(new[] { "Review Title", "Review" }, terms, false)));
+                                queryContainerList.Add(q);
+                                addedReviewKeywordMultiMatch = true;
+                            }
                         }
                         else
                         {
@@ -195,7 +204,11 @@ namespace API.services
                                             )
                                         )
                                     );
-                    setOfReviewsList.Add(reviewRes.Documents.ToList());
+
+                    if (reviewRes.Documents.Count > 0)
+                    {
+                        setOfReviewsList.Add(reviewRes.Documents.ToList());
+                    }
                 }
             } else         // no movie criteria was searched, search on reviews first, then find the movies
             {
@@ -214,6 +227,8 @@ namespace API.services
                                 );
                 movieList = movieRes.Documents.ToList();
 
+
+                List<ISearchResponse<Review>> reviewResList = new List<ISearchResponse<Review>>();
                 foreach (Movie movie in movieList)
                 {
                     form.movieID = movie.MovieID.ToString();
@@ -224,52 +239,53 @@ namespace API.services
                                     .Index(ReviewsController.reviewIndex)
                                     .Size(3)
                                     .Query(q => q
-                                        .FunctionScore(fs => fs
-                                            .Query(q2 => dynamicAdvSearch
-                                                .SingleIndexRequest(new Review(), form))
-                                                    .BoostMode(FunctionBoostMode.Multiply)
-                                                    .ScoreMode(FunctionScoreMode.Sum)
-                                                    .Functions(f => f
-                                                        .Exponential(d => d         // higher usefulness votes = higher boosting
-                                                            .Field(f => f.UsefulnessVote)
-                                                            .Decay(0.33)
-                                                            .Origin(5000)
-                                                            .Scale(5)
-                                                            .Offset(1)
-                                                            .Weight(0.1)
-                                                    )
-                                                )
-                                            )
-                                        )
+                                            .Bool(b =>b
+                                                .Must(dynamicAdvSearch
+                                                .SingleIndexRequest(new Review(), form)
+                                                            )
+                                                        )
+                                                    )   
                                     );
+                    
                     if (reviewRes.Documents.Count > 0)
                     {
-                        setOfReviewsList.Add(reviewRes.Documents.ToList());
+                        reviewResList.Add(reviewRes);
                     }
                 }
 
-                List<int> returnedMovieIDs = new List<int>();
-                foreach (List<Review> reviewSet in setOfReviewsList)
+                var orderByRelevance = from result in reviewResList
+                                       orderby result.MaxScore descending
+                                       select result;
+
+
+                foreach(ISearchResponse<Review> result in orderByRelevance)
                 {
-                    if (reviewSet.Count > 0)
-                    {
-                        if (!returnedMovieIDs.Contains(reviewSet[0].MovieID))
-                        {
-                            returnedMovieIDs.Add(reviewSet[0].MovieID);
-                        }
-                    }
+                    setOfReviewsList.Add(result.Documents.ToList());
                 }
 
-                List<Movie> validMovies = new List<Movie>(movieList);
-                foreach(Movie movie in movieList)
-                {
-                    if (!returnedMovieIDs.Contains(movie.MovieID))
-                    {
-                        validMovies.Remove(movie);
-                    }
-                }
+                //List<int> returnedMovieIDs = new List<int>();
+                //foreach (List<Review> reviewSet in setOfReviewsList)
+                //{
+                //    if (reviewSet.Count > 0)
+                //    {
+                //        if (!returnedMovieIDs.Contains(reviewSet[0].MovieID))
+                //        {
+                //            returnedMovieIDs.Add(reviewSet[0].MovieID);
+                //        }
+                //    }
+                //}
 
-                movieList = validMovies;
+                //List<Movie> validMovies = new List<Movie>(movieList);
+                //foreach(Movie movie in movieList)
+                //{
+                //    if (!returnedMovieIDs.Contains(movie.MovieID))
+                //    {
+                //        validMovies.Remove(movie);
+                //    }
+                //}
+
+                //movieList = validMovies;
+                movieList = new List<Movie>(); // return empty list if no movie hits
             }
             MovieReview results = new MovieReview();
             results.MovieDocuments = movieList;
