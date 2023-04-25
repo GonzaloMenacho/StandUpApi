@@ -215,9 +215,9 @@ namespace API.services
                 /* Bad Algo:
                  * if movie query null, get all movies
                  * for each movieID, make the review query with size 3. 
-                 * for each movieID that returns 0 hits, remove that movie from the list
-                 * end result should be only the movies with hits
+                 * end result should be only reviews for the movies with hits
                  * but not sorted by relevancy of those hits (Sad!)
+                 * so we sort by relevancy manually at the end
                  */
                 form.MovieTitle = ""; // returns all movies
                 var movieRes = await _elasticClient.SearchAsync<Movie>(s => s
@@ -262,6 +262,8 @@ namespace API.services
                 {
                     setOfReviewsList.Add(result.Documents.ToList());
                 }
+                
+                // no longer need to worry about movies being returned if only reviews are hit
 
                 //List<int> returnedMovieIDs = new List<int>();
                 //foreach (List<Review> reviewSet in setOfReviewsList)
