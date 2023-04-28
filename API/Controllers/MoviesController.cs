@@ -389,13 +389,15 @@ namespace API.Controllers
                 }
                 List<Movie> movielist = response.Documents.ToList();   // save the response for now
 
+                int response_size = 5;
+
                 List<List<Review>> reviewlist = new List<List<Review>>();
                 foreach (Movie movie in movielist) // for each movie in our movie list
                 {
                     int movieid = movie.MovieID;    // grab the movieID
                     var res = await _elasticClient.SearchAsync<Review>(s => s
                         .Index("reviews")   // https://tenor.com/view/now-whos-gonna-stop-me-bowser-the-super-mario-bros-movie-try-to-stop-me-now-im-unstoppable-gif-26913745
-                        .Size(3)            // limits the number of hits to 3
+                        .Size(response_size)            // limits the number of hits to 10
                         .Query(q => q
                             .Match(m => m                   // perform a match query
                                 .Field(f => f.MovieID)      // match on the "MovieID" field

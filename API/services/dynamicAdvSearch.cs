@@ -184,7 +184,7 @@ namespace API.services
                     form.movieID = movie.MovieID.ToString();
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
-                                    .Size(3)
+                                    .Size(5)
                                     .Query(q => q
                                         .FunctionScore(fs => fs
                                             .Query(q2 => dynamicAdvSearch
@@ -237,7 +237,7 @@ namespace API.services
                     // nested query of multiple size 3 queries?
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
-                                    .Size(3)
+                                    .Size(5)
                                     .Query(q => q
                                             .Bool(b =>b
                                                 .Must(dynamicAdvSearch
