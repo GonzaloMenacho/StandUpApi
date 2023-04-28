@@ -7,6 +7,7 @@ using System.Reflection;
 
 namespace API.services
 {
+    int reviewSize = 5;
     //TODO: add some way to handle both movies and reviews in one advanced search. How do we grab only reviews of movies that meet our specified criteria?
     // Ideas: search on the movie criteria first, then add a query on the reviews that says "grab only reviews from these movieIDs"
     public class dynamicAdvSearch
@@ -184,7 +185,7 @@ namespace API.services
                     form.movieID = movie.MovieID.ToString();
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
-                                    .Size(3)
+                                    .Size(reviewSize)
                                     .Query(q => q
                                         .FunctionScore(fs => fs
                                             .Query(q2 => dynamicAdvSearch
@@ -237,7 +238,7 @@ namespace API.services
                     // nested query of multiple size 3 queries?
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
-                                    .Size(3)
+                                    .Size(reviewSize)
                                     .Query(q => q
                                             .Bool(b =>b
                                                 .Must(dynamicAdvSearch
