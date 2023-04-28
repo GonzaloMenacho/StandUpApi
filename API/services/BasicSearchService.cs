@@ -14,11 +14,12 @@ namespace API.services
         {
             List<Movie> movielist = new List<Movie>();
             List<List<Review>> reviewlist = new List<List<Review>>();
+            int size = 5;
             try
             {
                 var movieres = await GetMovieListFromMatchedTerm(_elasticClient, term);
                 movielist = movieres;
-                var reviewres = await GetWeightedReviewList(_elasticClient, movielist, term, reviewIndex, 3);
+                var reviewres = await GetWeightedReviewList(_elasticClient, movielist, term, reviewIndex, size);
                 reviewlist = reviewres;
             }
             catch (Exception e)
@@ -154,7 +155,7 @@ namespace API.services
             foreach (Movie movie in movielist) // for each movie in our movie list
             {
                 string[] movieidarr = { movie.MovieID.ToString() };
-                var res = await MatchSearchQuery(_elasticClient, reviewOBJ, field, movieidarr, 3);
+                var res = await MatchSearchQuery(_elasticClient, reviewOBJ, field, movieidarr, size);
 
                 if (!res.IsValid)   // if we didn't get the review json back
                 {
@@ -275,7 +276,7 @@ namespace API.services
 
                     var res = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
-                                    .Size(3)
+                                    .Size(size)
                                     .Query(q => finalq
                                                     )
                                     );
@@ -305,7 +306,7 @@ namespace API.services
 
                 foreach (Movie movie in tempMovieList)
                 {
-                    var res = await GetWeightedReviewQuery(_elasticClient, movie, term, reviewIndex, 3);
+                    var res = await GetWeightedReviewQuery(_elasticClient, movie, term, reviewIndex, size);
                     if (!res.IsValid)
                     {
                         throw new HttpRequestException("Failed to find reviews in BasicSearchService GetWeightedReviewList function.");
@@ -347,7 +348,7 @@ namespace API.services
                 .Size(size)
                 .Sort(sort => sort
                     .Descending(sortorder)           // this sorts by relevancy
-                    //.Descending(f => f.UsefulnessVote)    // this sorts by usefulness votes
+                    //.Descending(f => f.TotalVotes)    // this sorts by total votes
                     )
                 );
             if (!response.IsValid)  // if we didn't reach the database for the movies
@@ -392,7 +393,7 @@ namespace API.services
                 .ScoreMode(FunctionScoreMode.Sum)
                 .Functions(f => f
                     .Exponential(d => d         // higher usefulness votes = higher boosting
-                        .Field(f => f.UsefulnessVote)
+                        .Field(f => f.TotalVotes)
                         .Decay(0.33)
                         .Origin(5000)
                         .Scale(5)
