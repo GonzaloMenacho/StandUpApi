@@ -7,6 +7,7 @@ using System.Reflection;
 
 namespace API.services
 {
+    int reviewSize = 5;
     //TODO: add some way to handle both movies and reviews in one advanced search. How do we grab only reviews of movies that meet our specified criteria?
     // Ideas: search on the movie criteria first, then add a query on the reviews that says "grab only reviews from these movieIDs"
     public class dynamicAdvSearch
@@ -184,7 +185,7 @@ namespace API.services
                     form.movieID = movie.MovieID.ToString();
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
-                                    .Size(3)
+                                    .Size(reviewSize)
                                     .Query(q => q
                                         .FunctionScore(fs => fs
                                             .Query(q2 => dynamicAdvSearch
@@ -215,9 +216,9 @@ namespace API.services
                 /* Bad Algo:
                  * if movie query null, get all movies
                  * for each movieID, make the review query with size 3. 
-                 * for each movieID that returns 0 hits, remove that movie from the list
-                 * end result should be only the movies with hits
+                 * end result should be only reviews for the movies with hits
                  * but not sorted by relevancy of those hits (Sad!)
+                 * so we sort by relevancy manually at the end
                  */
                 form.MovieTitle = ""; // returns all movies
                 var movieRes = await _elasticClient.SearchAsync<Movie>(s => s
@@ -237,7 +238,7 @@ namespace API.services
                     // nested query of multiple size 3 queries?
                     var reviewRes = await _elasticClient.SearchAsync<Review>(s => s
                                     .Index(ReviewsController.reviewIndex)
-                                    .Size(3)
+                                    .Size(reviewSize)
                                     .Query(q => q
                                             .Bool(b =>b
                                                 .Must(dynamicAdvSearch
@@ -262,6 +263,8 @@ namespace API.services
                 {
                     setOfReviewsList.Add(result.Documents.ToList());
                 }
+                
+                // no longer need to worry about movies being returned if only reviews are hit
 
                 //List<int> returnedMovieIDs = new List<int>();
                 //foreach (List<Review> reviewSet in setOfReviewsList)
